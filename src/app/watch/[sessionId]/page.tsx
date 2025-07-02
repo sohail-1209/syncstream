@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import { processAndGetVideoUrl } from "@/app/actions";
+import { Badge } from "@/components/ui/badge";
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
@@ -112,6 +113,12 @@ export default function WatchPartyPage() {
                     <Logo className="h-8 w-8 text-primary" />
                     <span className="font-bold text-xl font-headline hidden sm:inline">SyncStream</span>
                 </Link>
+
+                <div className="hidden md:flex flex-col items-center">
+                    <span className="text-xs text-muted-foreground">ROOM CODE</span>
+                    <Badge variant="outline" className="text-base font-mono tracking-widest px-3 py-1">{params.sessionId}</Badge>
+                </div>
+
                 <div className="flex items-center gap-2">
                     <RecommendationsModal>
                         <Button variant="outline">
