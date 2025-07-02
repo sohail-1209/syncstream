@@ -15,6 +15,9 @@ import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import { processAndGetVideoUrl } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
+import { useLocalUser } from "@/hooks/use-local-user";
+import { db } from "@/lib/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
@@ -27,6 +30,7 @@ export default function WatchPartyPage() {
     const [tempUrl, setTempUrl] = useState('');
     const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
     const [urlError, setUrlError] = useState<string | null>(null);
+    const localUser = useLocalUser();
 
 
     useEffect(() => {
@@ -34,6 +38,29 @@ export default function WatchPartyPage() {
             setInviteLink(`${window.location.origin}/watch/${params.sessionId}`);
         }
     }, [params.sessionId]);
+
+    useEffect(() => {
+        if (!localUser || !params.sessionId) return;
+
+        const userRef = doc(db, "sessions", params.sessionId, "participants", localUser.id);
+
+        const setPresence = async () => {
+             await setDoc(userRef, { ...localUser, lastSeen: serverTimestamp() }, { merge: true });
+        }
+        setPresence();
+
+        const interval = setInterval(() => {
+            setPresence();
+        }, 60 * 1000); // Update every minute
+
+        return () => {
+            clearInterval(interval);
+            // In a production app, you'd want a more robust way to handle users
+            // leaving, like using Firebase's Realtime Database presence system
+            // or a Cloud Function to clean up participants who haven't been seen
+            // for a while. For this example, we'll just let them time out.
+        };
+    }, [localUser, params.sessionId]);
 
     const handleSetVideo = () => {
         if (screenStream) {
@@ -198,7 +225,7 @@ export default function WatchPartyPage() {
                     <VideoPlayer videoSource={videoSource} screenStream={screenStream} />
                 </div>
                 <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
-                    <Sidebar />
+                    <Sidebar sessionId={params.sessionId} user={localUser} />
                 </div>
             </main>
         </div>

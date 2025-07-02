@@ -1,16 +1,50 @@
+'use client';
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Crown, Mic, MicOff, User } from "lucide-react";
+import { Crown, Mic, MicOff, User, Loader2 } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import type { LocalUser } from "@/hooks/use-local-user";
 
-const participants = [
-    { id: 1, name: 'You', avatar: 'https://placehold.co/100x100/f472b6/ffffff', isHost: true, isMuted: false },
-    { id: 2, name: 'Alice', avatar: 'https://placehold.co/100x100/7c3aed/ffffff', isHost: false, isMuted: false },
-    { id: 3, name: 'Bob', avatar: 'https://placehold.co/100x100/2563eb/ffffff', isHost: false, isMuted: true },
-    { id: 4, name: 'Charlie', avatar: 'https://placehold.co/100x100/10b981/ffffff', isHost: false, isMuted: false },
-    { id: 5, name: 'Diana', avatar: 'https://placehold.co/100x100/f59e0b/ffffff', isHost: false, isMuted: false },
-]
+interface Participant extends LocalUser {
+    isHost?: boolean;
+    isMuted?: boolean;
+}
 
-export default function ParticipantsPanel() {
+export default function ParticipantsPanel({ sessionId }: { sessionId: string }) {
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (!sessionId) return;
+    setLoading(true);
+    const q = query(collection(db, "sessions", sessionId, "participants"), orderBy("name"));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const fetchedParticipants: Participant[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedParticipants.push(doc.data() as Participant);
+      });
+      setParticipants(fetchedParticipants);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching participants:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [sessionId]);
+  
+  if (loading) {
+    return (
+        <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+    )
+  }
+
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-4">
@@ -24,8 +58,8 @@ export default function ParticipantsPanel() {
                     <span className="font-medium">{p.name}</span>
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
-                    {p.isHost && <Crown className="h-4 w-4 text-amber-400" />}
-                    {p.isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-green-400" />}
+                    {/* Future functionality: {p.isHost && <Crown className="h-4 w-4 text-amber-400" />} */}
+                    {/* Future functionality: {p.isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-green-400" />} */}
                 </div>
             </div>
         ))}

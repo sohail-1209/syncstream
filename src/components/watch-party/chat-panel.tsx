@@ -1,23 +1,29 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { type LocalUser } from '@/hooks/use-local-user';
+import { db } from "@/lib/firebase";
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, type Timestamp } from "firebase/firestore";
 
-const initialMessages = [
-  { id: 1, user: { name: 'Alice', avatar: 'https://placehold.co/100x100/7c3aed/ffffff' }, text: 'This movie is amazing!', isMe: false },
-  { id: 2, user: { name: 'You', avatar: 'https://placehold.co/100x100/f472b6/ffffff' }, text: 'Right? I told you it was good!', isMe: true },
-  { id: 3, user: { name: 'Bob', avatar: 'https://placehold.co/100x100/2563eb/ffffff' }, text: 'Whoa, that plot twist!', isMe: false },
-  { id: 4, user: { name: 'Alice', avatar: 'https://placehold.co/100x100/7c3aed/ffffff' }, text: 'I did not see that coming at all.', isMe: false },
-];
+interface Message {
+    id: string;
+    user: { name: string; avatar: string; id: string };
+    text: string;
+    isMe?: boolean;
+    timestamp?: Timestamp;
+}
 
-export default function ChatPanel() {
-  const [messages, setMessages] = useState(initialMessages);
+
+export default function ChatPanel({ sessionId, user }: { sessionId: string; user: LocalUser | null }) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,16 +35,53 @@ export default function ChatPanel() {
     }
   }, [messages]);
   
-  const handleSendMessage = (e: React.FormEvent) => {
+  useEffect(() => {
+      if (!sessionId) return;
+      setLoading(true);
+      const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy('timestamp', 'asc'));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const fetchedMessages: Message[] = [];
+          querySnapshot.forEach((doc) => {
+              const data = doc.data();
+              fetchedMessages.push({
+                  id: doc.id,
+                  user: data.user,
+                  text: data.text,
+                  timestamp: data.timestamp,
+                  isMe: user?.id === data.user.id
+              });
+          });
+          setMessages(fetchedMessages);
+          setLoading(false);
+      });
+
+      return () => unsubscribe();
+  }, [sessionId, user]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim()) {
-      setMessages([
-        ...messages,
-        { id: Date.now(), user: { name: 'You', avatar: 'https://placehold.co/100x100/f472b6/ffffff' }, text: newMessage, isMe: true },
-      ]);
+    if (newMessage.trim() && user) {
+      const text = newMessage;
       setNewMessage('');
+      await addDoc(collection(db, "sessions", sessionId, "messages"), {
+        text: text,
+        user: {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar
+        },
+        timestamp: serverTimestamp()
+      });
     }
   };
+
+  if (loading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -84,10 +127,11 @@ export default function ChatPanel() {
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={user ? "Type a message..." : "Loading..."}
             autoComplete="off"
+            disabled={!user}
           />
-          <Button type="submit" size="icon">
+          <Button type="submit" size="icon" disabled={!user || !newMessage.trim()}>
             <Send className="h-4 w-4" />
           </Button>
         </form>
