@@ -1,9 +1,37 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Clapperboard, Users } from 'lucide-react';
+import { Clapperboard, Users, ArrowRight } from 'lucide-react';
 import { Logo } from '@/components/icons';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const [roomCode, setRoomCode] = useState('');
+  const router = useRouter();
+
+  const handleJoinRoom = () => {
+    if (roomCode.trim()) {
+      router.push(`/watch/${roomCode.trim()}`);
+    }
+  };
+
+  const createNewRoomId = () => {
+    return Math.random().toString(36).substring(2, 8);
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">
       <div className="text-center space-y-6 max-w-2xl mx-auto">
@@ -20,17 +48,47 @@ export default function Home() {
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
            <Button asChild size="lg" className="font-bold text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Link href="/watch/session-123">
+            <Link href={`/watch/${createNewRoomId()}`}>
               <Clapperboard className="mr-2 h-6 w-6" />
               Create Watch Party
             </Link>
           </Button>
-          <Button asChild size="lg" variant="outline" className="font-bold text-lg px-8 py-6">
-            <Link href="#">
-              <Users className="mr-2 h-6 w-6" />
-              Join a Session
-            </Link>
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="lg" variant="outline" className="font-bold text-lg px-8 py-6">
+                <Users className="mr-2 h-6 w-6" />
+                Join a Session
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Join a Watch Party</DialogTitle>
+                <DialogDescription>
+                  Enter the room code provided by the host to join the session.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="room-code" className="text-right">
+                    Code
+                  </Label>
+                  <Input 
+                    id="room-code" 
+                    placeholder="Enter code" 
+                    className="col-span-3"
+                    value={roomCode}
+                    onChange={(e) => setRoomCode(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleJoinRoom} disabled={!roomCode.trim()}>
+                  <ArrowRight className="mr-2 h-4 w-4" /> Join Session
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </main>

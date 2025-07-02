@@ -172,7 +172,7 @@ export default function WatchPartyPage() {
                                 <div className="space-y-2">
                                     <h4 className="font-medium leading-none">Invite friends</h4>
                                     <p className="text-sm text-muted-foreground">
-                                        Share this link with others to join the party.
+                                        Share this link with others to join the party. The code at the end is your room code.
                                     </p>
                                 </div>
                                 <div className="flex items-center space-x-2">
