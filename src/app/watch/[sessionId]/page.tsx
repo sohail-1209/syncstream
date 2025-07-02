@@ -1,17 +1,18 @@
 'use client';
 
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Clapperboard, Copy, Link as LinkIcon, Users, Wand2 } from "lucide-react";
+import { Copy, Users, Wand2 } from "lucide-react";
 import Link from 'next/link';
 
-export default function WatchPartyPage({ params }: { params: { sessionId: string } }) {
+export default function WatchPartyPage() {
+    const params = useParams<{ sessionId: string }>();
     const inviteLink = `https://example.com/watch/${params.sessionId}`;
 
     return (
@@ -55,11 +56,11 @@ export default function WatchPartyPage({ params }: { params: { sessionId: string
                     </Popover>
                 </div>
             </header>
-            <main className="flex-1 flex flex-col lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-                <div className="lg:col-span-2 xl:col-span-3 lg:h-full">
+            <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4 overflow-hidden">
+                <div className="md:col-span-1 lg:col-span-2 xl:col-span-3 w-full h-full min-h-0">
                     <VideoPlayer />
                 </div>
-                <div className="flex-1 lg:col-span-1 xl:col-span-1 lg:h-full min-h-0">
+                <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 w-full h-full min-h-0">
                     <Sidebar />
                 </div>
             </main>
