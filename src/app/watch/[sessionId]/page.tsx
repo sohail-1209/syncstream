@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -8,12 +9,24 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2 } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon } from "lucide-react";
 import Link from 'next/link';
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
     const inviteLink = `https://example.com/watch/${params.sessionId}`;
+    const [videoUrl, setVideoUrl] = useState('');
+    const [tempUrl, setTempUrl] = useState('');
+    const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
+
+    const handleSetVideo = () => {
+        if (tempUrl.startsWith('http://') || tempUrl.startsWith('https://')) {
+            setVideoUrl(tempUrl);
+            setIsVideoPopoverOpen(false);
+        } else {
+            console.error("Invalid URL. Please provide a valid video link.");
+        }
+    };
 
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
@@ -29,6 +42,34 @@ export default function WatchPartyPage() {
                             Get AI Recommendations
                         </Button>
                     </RecommendationsModal>
+
+                    <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline">
+                                <LinkIcon className="h-4 w-4 mr-2" />
+                                Set Video
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80">
+                            <div className="grid gap-4">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium leading-none">Set Video Source</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Paste a direct link to a video file.
+                                    </p>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Input
+                                        placeholder="https://example.com/video.mp4"
+                                        value={tempUrl}
+                                        onChange={(e) => setTempUrl(e.target.value)}
+                                        className="h-8"
+                                    />
+                                    <Button onClick={handleSetVideo} size="sm" className="h-8">Load</Button>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
 
                     <Popover>
                         <PopoverTrigger asChild>
@@ -58,7 +99,7 @@ export default function WatchPartyPage() {
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4 overflow-hidden">
                 <div className="md:col-span-1 lg:col-span-2 xl:col-span-3 w-full h-full min-h-0">
-                    <VideoPlayer />
+                    <VideoPlayer videoUrl={videoUrl} />
                 </div>
                 <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 w-full h-full min-h-0">
                     <Sidebar />
