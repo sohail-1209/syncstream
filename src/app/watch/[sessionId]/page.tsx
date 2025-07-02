@@ -9,7 +9,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, Search } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2 } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -25,7 +25,6 @@ export default function WatchPartyPage() {
     const [tempUrl, setTempUrl] = useState('');
     const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
     const [urlError, setUrlError] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
 
 
     useEffect(() => {
@@ -52,12 +51,6 @@ export default function WatchPartyPage() {
         });
     };
     
-    const handleWebSearch = () => {
-        if (!searchQuery.trim()) return;
-        const url = `https://duckduckgo.com/?q=${encodeURIComponent(searchQuery)}`;
-        window.open(url, '_blank', 'noopener,noreferrer');
-    };
-
     const handleCopyInvite = () => {
         if (!inviteLink) return;
         navigator.clipboard.writeText(inviteLink).then(() => {
@@ -82,39 +75,6 @@ export default function WatchPartyPage() {
                             Get AI Recommendations
                         </Button>
                     </RecommendationsModal>
-
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline">
-                                <Search className="h-4 w-4 mr-2" />
-                                Search Web
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80">
-                            <div className="grid gap-4">
-                                <div className="space-y-2">
-                                    <h4 className="font-medium leading-none">Search the Web</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Find a video to watch. This will open search results in a new browser tab.
-                                    </p>
-                                </div>
-                                <div className="grid gap-2">
-                                     <div className="flex items-center space-x-2">
-                                         <Input
-                                             placeholder="e.g., 'Lilo and Stitch trailer'"
-                                             value={searchQuery}
-                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                             onKeyDown={(e) => e.key === 'Enter' && handleWebSearch()}
-                                             className="h-8"
-                                         />
-                                         <Button onClick={handleWebSearch} size="sm" className="h-8">
-                                             Search
-                                         </Button>
-                                     </div>
-                                </div>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
                         <PopoverTrigger asChild>
