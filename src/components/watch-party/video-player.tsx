@@ -5,65 +5,84 @@ import EmojiBar from "./emoji-bar";
 import { Film, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
+import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 
-const getYoutubeVideoId = (url: string): string | null => {
-    if (!url) return null;
-    const youtubeRegex = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = url.match(youtubeRegex);
-    return match ? match[1] : null;
-};
-
-export default function VideoPlayer({ videoUrl }: { videoUrl: string }) {
+export default function VideoPlayer({ videoSource }: { videoSource: ProcessVideoUrlOutput | null }) {
   const { toast } = useToast();
   const [hasError, setHasError] = useState(false);
-  const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Reset error state when a new video source is provided
     setHasError(false);
-    const videoId = getYoutubeVideoId(videoUrl);
-    setYoutubeVideoId(videoId);
-  }, [videoUrl]);
+  }, [videoSource]);
 
   const handleError = () => {
-    // This error handler is for the <video> tag, not YouTube iframe
+    // This error handler is mainly for the <video> tag
     setHasError(true);
     toast({
       title: "Video Error",
       description:
-        "Could not play the video. Please check the link and ensure it's a direct link to a video file (e.g., .mp4) and allows embedding.",
+        "Could not play the video. Please check the link and ensure it allows embedding.",
       variant: "destructive",
       duration: 8000,
     });
   };
+  
+  const renderVideo = () => {
+    if (!videoSource) return null;
 
-  return (
-    <Card className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
-      <div className="relative flex-1 bg-black group">
-        {videoUrl && !hasError ? (
-          <>
-            {youtubeVideoId ? (
+    switch (videoSource.platform) {
+        case 'youtube':
+            return (
                 <iframe
-                    key={videoUrl}
+                    key={videoSource.videoId}
                     className="w-full h-full"
-                    src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&controls=1`}
+                    src={`https://www.youtube.com/embed/${videoSource.videoId}?autoplay=1&controls=1`}
                     title="YouTube video player"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                 ></iframe>
-            ) : (
-                <video
-                    key={videoUrl}
+            );
+        case 'vimeo':
+            return (
+                <iframe
+                    key={videoSource.videoId}
+                    className="w-full h-full"
+                    src={`https://player.vimeo.com/video/${videoSource.videoId}?autoplay=1`}
+                    title="Vimeo video player"
+                    frameBorder="0"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                ></iframe>
+            );
+        case 'direct':
+            return (
+                 <video
+                    key={videoSource.correctedUrl}
                     controls
                     autoPlay
                     className="w-full h-full object-contain"
-                    src={videoUrl}
+                    src={videoSource.correctedUrl}
                     onError={handleError}
                     crossOrigin="anonymous"
                 >
                     Your browser does not support the video tag.
                 </video>
-            )}
+            );
+        default:
+            return null;
+    }
+  }
+  
+  const videoElement = renderVideo();
+
+  return (
+    <Card className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
+      <div className="relative flex-1 bg-black group">
+        {videoElement && !hasError ? (
+          <>
+            {videoElement}
             <EmojiBar />
           </>
         ) : (

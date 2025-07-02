@@ -2,6 +2,7 @@
 "use server";
 
 import { recommendContent, type RecommendContentInput } from "@/ai/flows/recommend-content";
+import { processVideoUrl, type ProcessVideoUrlInput } from "@/ai/flows/process-video-url";
 
 interface FormInput {
     watchHistory: string;
@@ -24,5 +25,25 @@ export async function getRecommendations(input: FormInput) {
     } catch (error) {
         console.error(error);
         return { data: null, error: "Failed to get recommendations. Please try again later." };
+    }
+}
+
+
+export async function processAndGetVideoUrl(url: string) {
+    try {
+        if (!url || url.trim() === '') {
+            return { data: null, error: "Please provide a video URL." };
+        }
+        const aiInput: ProcessVideoUrlInput = { url };
+        const videoData = await processVideoUrl(aiInput);
+
+        if (videoData.platform === 'unknown') {
+            return { data: null, error: `Could not identify the video source from the provided link. Please check the URL.` }
+        }
+
+        return { data: videoData, error: null };
+    } catch (error) {
+        console.error(error);
+        return { data: null, error: "Failed to process the video URL. Please try again later." };
     }
 }

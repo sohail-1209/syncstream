@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -9,28 +9,45 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2 } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
+import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
+import { processAndGetVideoUrl } from "@/app/actions";
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
     const { toast } = useToast();
+    const [isPending, startTransition] = useTransition();
+
     const [inviteLink, setInviteLink] = useState('');
-    const [videoUrl, setVideoUrl] = useState('');
+    const [videoSource, setVideoSource] = useState<ProcessVideoUrlOutput | null>(null);
     const [tempUrl, setTempUrl] = useState('');
     const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
+    const [urlError, setUrlError] = useState<string | null>(null);
 
-    useState(() => {
+    useEffect(() => {
         if (typeof window !== 'undefined') {
             setInviteLink(`${window.location.origin}/watch/${params.sessionId}`);
         }
-    });
+    }, [params.sessionId]);
 
     const handleSetVideo = () => {
-        // The VideoPlayer component will handle URL validation and type
-        setVideoUrl(tempUrl);
-        setIsVideoPopoverOpen(false);
+        setUrlError(null);
+        startTransition(async () => {
+            const result = await processAndGetVideoUrl(tempUrl);
+            if (result.error) {
+                setUrlError(result.error);
+            } else if (result.data) {
+                setVideoSource(result.data);
+                setIsVideoPopoverOpen(false);
+                setTempUrl('');
+                toast({
+                  title: "Video Loaded!",
+                  description: `Playing from ${result.data.platform}.`
+                })
+            }
+        });
     };
 
     const handleCopyInvite = () => {
@@ -70,18 +87,24 @@ export default function WatchPartyPage() {
                                 <div className="space-y-2">
                                     <h4 className="font-medium leading-none">Set Video Source</h4>
                                     <p className="text-sm text-muted-foreground">
-                                        Paste a YouTube or direct video link (e.g., .mp4).
+                                        Paste a link from YouTube, Vimeo, or a direct video file. Our AI will try to fix any typos.
                                     </p>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                    <Input
-                                        placeholder="https://youtube.com/watch?v=..."
-                                        value={tempUrl}
-                                        onChange={(e) => setTempUrl(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()}
-                                        className="h-8"
-                                    />
-                                    <Button onClick={handleSetVideo} size="sm" className="h-8">Load</Button>
+                                <div className="grid gap-2">
+                                     <div className="flex items-center space-x-2">
+                                         <Input
+                                             placeholder="https://youtube.com/watch?v=..."
+                                             value={tempUrl}
+                                             onChange={(e) => setTempUrl(e.target.value)}
+                                             onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()}
+                                             className="h-8"
+                                             disabled={isPending}
+                                         />
+                                         <Button onClick={handleSetVideo} size="sm" className="h-8" disabled={isPending}>
+                                             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load"}
+                                         </Button>
+                                     </div>
+                                     {urlError && <p className="text-xs text-destructive">{urlError}</p>}
                                 </div>
                             </div>
                         </PopoverContent>
@@ -115,7 +138,7 @@ export default function WatchPartyPage() {
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
-                    <VideoPlayer videoUrl={videoUrl} />
+                    <VideoPlayer videoSource={videoSource} />
                 </div>
                 <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
                     <Sidebar />
