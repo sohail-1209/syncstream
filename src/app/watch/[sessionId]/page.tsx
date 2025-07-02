@@ -11,20 +11,29 @@ import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
 import { Copy, Users, Wand2, Link as LinkIcon } from "lucide-react";
 import Link from 'next/link';
+import { useToast } from "@/hooks/use-toast";
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
+    const { toast } = useToast();
     const inviteLink = `https://example.com/watch/${params.sessionId}`;
     const [videoUrl, setVideoUrl] = useState('');
     const [tempUrl, setTempUrl] = useState('');
     const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
 
     const handleSetVideo = () => {
-        if (tempUrl.startsWith('http://') || tempUrl.startsWith('https://')) {
+        try {
+            // Basic validation to ensure it's a URL structure.
+            // The video player will handle actual playback errors.
+            new URL(tempUrl);
             setVideoUrl(tempUrl);
             setIsVideoPopoverOpen(false);
-        } else {
-            console.error("Invalid URL. Please provide a valid video link.");
+        } catch (_) {
+            toast({
+                title: "Invalid URL",
+                description: "Please enter a valid video link.",
+                variant: "destructive",
+            });
         }
     };
 
@@ -63,6 +72,7 @@ export default function WatchPartyPage() {
                                         placeholder="https://example.com/video.mp4"
                                         value={tempUrl}
                                         onChange={(e) => setTempUrl(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()}
                                         className="h-8"
                                     />
                                     <Button onClick={handleSetVideo} size="sm" className="h-8">Load</Button>
