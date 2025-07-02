@@ -6,7 +6,7 @@ import { Film, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
-import ReactPlayer from 'react-player/lazy';
+import ReactPlayer from 'react-player';
 
 export default function VideoPlayer({ videoSource }: { videoSource: ProcessVideoUrlOutput | null }) {
   const { toast } = useToast();
