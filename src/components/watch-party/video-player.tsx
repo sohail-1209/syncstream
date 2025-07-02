@@ -14,7 +14,7 @@ import {
   
   export default function VideoPlayer() {
     return (
-      <Card className="w-full h-full bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
+      <Card className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
         <div className="relative flex-1 bg-black group">
           <Image
             src="https://placehold.co/1280x720/141218/1A1820"

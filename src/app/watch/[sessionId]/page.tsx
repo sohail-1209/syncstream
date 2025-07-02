@@ -53,11 +53,11 @@ export default function WatchPartyPage({ params }: { params: { sessionId: string
                     </Popover>
                 </div>
             </header>
-            <main className="flex-1 grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4 overflow-hidden">
-                <div className="lg:col-span-2 xl:col-span-3 h-full">
+            <main className="flex-1 flex flex-col lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                <div className="lg:col-span-2 xl:col-span-3 lg:h-full">
                     <VideoPlayer />
                 </div>
-                <div className="lg:col-span-1 xl:col-span-1 h-full">
+                <div className="flex-1 lg:col-span-1 xl:col-span-1 lg:h-full min-h-0">
                     <Sidebar />
                 </div>
             </main>
