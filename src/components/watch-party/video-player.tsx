@@ -22,7 +22,7 @@ export default function VideoPlayer({ videoSource }: { videoSource: ProcessVideo
     toast({
       title: "Video Error",
       description:
-        "Could not play the video. Please check the link and ensure it allows embedding.",
+        "Could not play the video. The link may be invalid, or the video provider may be blocking it from being embedded here (CORS policy).",
       variant: "destructive",
       duration: 8000,
     });

@@ -87,7 +87,7 @@ export default function WatchPartyPage() {
                                 <div className="space-y-2">
                                     <h4 className="font-medium leading-none">Set Video Source</h4>
                                     <p className="text-sm text-muted-foreground">
-                                        Paste a link from YouTube, Vimeo, or a direct video file. Our AI will try to fix any typos.
+                                        Paste a direct link to a video file (.mp4, .webm), or a link from YouTube or Vimeo. Our AI will handle the rest. Note: Links to streaming site webpages may not work due to embedding restrictions.
                                     </p>
                                 </div>
                                 <div className="grid gap-2">

@@ -48,7 +48,7 @@ Given the following URL, please perform the following tasks:
 1.  Correct any obvious typos or formatting errors in the URL.
 2.  Identify the video platform. The platform can be 'youtube', 'vimeo', a 'direct' link to a video file (e.g., .mp4, .webm), or 'unknown'.
 3.  If the platform is 'youtube' or 'vimeo', extract the unique video ID from the URL. If not applicable, set videoId to null.
-4.  If the provided URL is a webpage that embeds a video (e.g., ending in .html), try to infer the direct link to the video file. For example, a page at '.../some-movie-watch-online.html' might have its video at '.../some-movie.mp4'. If you can make a confident guess, set the platform to 'direct' and the 'correctedUrl' to your inferred video file URL.
+4.  The URL might be for a webpage that *contains* an embedded video player (e.g., from a streaming site that is not YouTube or Vimeo). These sites often protect their video streams and do not allow direct linking. If the URL does not point directly to a video file (like .mp4, .webm) and is not a standard YouTube or Vimeo link, you should classify it as 'unknown'. Do NOT attempt to guess a direct video file URL by changing the extension (e.g., from .html to .mp4), as this is unreliable and will likely fail.
 5.  If you cannot determine the platform or a direct video link, set the platform to 'unknown'.
 6.  Return the result in the specified format.
 
@@ -56,7 +56,7 @@ Examples:
 - Input: "htps://www.youtub.com/w?v=dQw4w9WgXcQ" -> platform: 'youtube', videoId: 'dQw4w9WgXcQ', correctedUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 - Input: "vimeo com/12345678" -> platform: 'vimeo', videoId: '12345678', correctedUrl: "https://vimeo.com/12345678"
 - Input: "https://example.com/my_awesome_video.mp4" -> platform: 'direct', videoId: null, correctedUrl: "https://example.com/my_awesome_video.mp4"
-- Input: "https://some-site.com/movie-title-watch-online.html" -> platform: 'direct', videoId: null, correctedUrl: "https://some-site.com/movie-title.mp4"
+- Input: "https://some-site.com/movie-title-watch-online.html" -> platform: 'unknown', videoId: null, correctedUrl: "https://some-site.com/movie-title-watch-online.html"
 - Input: "a random string" -> platform: 'unknown', videoId: null, correctedUrl: "a random string"
 
 User provided URL: {{{url}}}`,
