@@ -16,26 +16,32 @@ import { useToast } from "@/hooks/use-toast";
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
     const { toast } = useToast();
-    const inviteLink = `https://example.com/watch/${params.sessionId}`;
+    const [inviteLink, setInviteLink] = useState('');
     const [videoUrl, setVideoUrl] = useState('');
     const [tempUrl, setTempUrl] = useState('');
     const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
 
-    const handleSetVideo = () => {
-        try {
-            // Basic validation to ensure it's a URL structure.
-            // The video player will handle actual playback errors.
-            new URL(tempUrl);
-            setVideoUrl(tempUrl);
-            setIsVideoPopoverOpen(false);
-        } catch (_) {
-            toast({
-                title: "Invalid URL",
-                description: "Please enter a valid video link.",
-                variant: "destructive",
-            });
+    useState(() => {
+        if (typeof window !== 'undefined') {
+            setInviteLink(`${window.location.origin}/watch/${params.sessionId}`);
         }
+    });
+
+    const handleSetVideo = () => {
+        // The VideoPlayer component will handle URL validation and type
+        setVideoUrl(tempUrl);
+        setIsVideoPopoverOpen(false);
     };
+
+    const handleCopyInvite = () => {
+        if (!inviteLink) return;
+        navigator.clipboard.writeText(inviteLink).then(() => {
+            toast({
+                title: "Copied!",
+                description: "Invite link copied to clipboard.",
+            });
+        });
+    }
 
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
@@ -64,12 +70,12 @@ export default function WatchPartyPage() {
                                 <div className="space-y-2">
                                     <h4 className="font-medium leading-none">Set Video Source</h4>
                                     <p className="text-sm text-muted-foreground">
-                                        Paste a direct link to a video file.
+                                        Paste a YouTube or direct video link (e.g., .mp4).
                                     </p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Input
-                                        placeholder="https://example.com/video.mp4"
+                                        placeholder="https://youtube.com/watch?v=..."
                                         value={tempUrl}
                                         onChange={(e) => setTempUrl(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()}
@@ -98,7 +104,7 @@ export default function WatchPartyPage() {
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Input value={inviteLink} readOnly className="h-8"/>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigator.clipboard.writeText(inviteLink)}>
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleCopyInvite}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -107,11 +113,11 @@ export default function WatchPartyPage() {
                     </Popover>
                 </div>
             </header>
-            <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4 overflow-hidden">
-                <div className="md:col-span-1 lg:col-span-2 xl:col-span-3 w-full h-full min-h-0">
+            <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
+                <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
                     <VideoPlayer videoUrl={videoUrl} />
                 </div>
-                <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 w-full h-full min-h-0">
+                <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
                     <Sidebar />
                 </div>
             </main>
