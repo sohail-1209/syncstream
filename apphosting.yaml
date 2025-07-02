@@ -5,7 +5,7 @@ headers:
   - source: /.*
     headers:
       - key: Permissions-Policy
-        value: display-capture=(self)
+        value: display-capture=*
 
 runConfig:
   # Increase this value if you'd like to automatically spin up

@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Permissions-Policy',
-            value: 'display-capture=(self)',
+            value: 'display-capture=*',
           },
         ],
       },
