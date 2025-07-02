@@ -9,7 +9,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2 } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -22,6 +22,7 @@ export default function WatchPartyPage() {
 
     const [inviteLink, setInviteLink] = useState('');
     const [videoSource, setVideoSource] = useState<ProcessVideoUrlOutput | null>(null);
+    const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
     const [tempUrl, setTempUrl] = useState('');
     const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
     const [urlError, setUrlError] = useState<string | null>(null);
@@ -34,6 +35,10 @@ export default function WatchPartyPage() {
     }, [params.sessionId]);
 
     const handleSetVideo = () => {
+        if (screenStream) {
+            screenStream.getTracks().forEach(track => track.stop());
+            setScreenStream(null);
+        }
         setUrlError(null);
         startTransition(async () => {
             const result = await processAndGetVideoUrl(tempUrl);
@@ -49,6 +54,45 @@ export default function WatchPartyPage() {
                 })
             }
         });
+    };
+
+    const handleShareScreen = async () => {
+        try {
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                setScreenStream(null);
+                toast({
+                    title: "Screen Sharing Stopped",
+                });
+                return;
+            }
+
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
+            setVideoSource(null); // Prioritize screen share over URL
+            setScreenStream(stream);
+
+            stream.getVideoTracks()[0].addEventListener('ended', () => {
+                setScreenStream(null);
+                toast({
+                    title: "Screen Sharing Stopped",
+                });
+            });
+
+            toast({
+                title: "Screen Sharing Started",
+                description: "You are now sharing your screen.",
+            });
+
+        } catch (error) {
+            console.error("Screen share error:", error);
+            if ((error as DOMException).name !== 'NotAllowedError') {
+              toast({
+                  variant: 'destructive',
+                  title: 'Screen Share Failed',
+                  description: 'Could not start screen sharing. Please grant permission and try again.',
+              });
+            }
+        }
     };
     
     const handleCopyInvite = () => {
@@ -75,6 +119,11 @@ export default function WatchPartyPage() {
                             Get AI Recommendations
                         </Button>
                     </RecommendationsModal>
+
+                     <Button variant="outline" onClick={handleShareScreen}>
+                        <ScreenShare className="h-4 w-4 mr-2" />
+                        {screenStream ? 'Stop Sharing' : 'Share Screen'}
+                    </Button>
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
                         <PopoverTrigger asChild>
@@ -139,7 +188,7 @@ export default function WatchPartyPage() {
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
-                    <VideoPlayer videoSource={videoSource} />
+                    <VideoPlayer videoSource={videoSource} screenStream={screenStream} />
                 </div>
                 <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
                     <Sidebar />
