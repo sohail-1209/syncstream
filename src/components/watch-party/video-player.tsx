@@ -6,10 +6,16 @@ import { Film, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
+import ReactPlayer from 'react-player/lazy';
 
 export default function VideoPlayer({ videoSource }: { videoSource: ProcessVideoUrlOutput | null }) {
   const { toast } = useToast();
   const [hasError, setHasError] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     // Reset error state when a new video source is provided
@@ -17,72 +23,39 @@ export default function VideoPlayer({ videoSource }: { videoSource: ProcessVideo
   }, [videoSource]);
 
   const handleError = () => {
-    // This error handler is mainly for the <video> tag
     setHasError(true);
     toast({
       title: "Video Error",
       description:
-        "Could not play the video. The link may be invalid, or the video provider may be blocking it from being embedded here (CORS policy).",
+        "Could not play the video. The link may be invalid, the content removed, or the provider is blocking it from being embedded (CORS policy).",
       variant: "destructive",
       duration: 8000,
     });
   };
   
-  const renderVideo = () => {
-    if (!videoSource) return null;
-
-    switch (videoSource.platform) {
-        case 'youtube':
-            return (
-                <iframe
-                    key={videoSource.videoId}
-                    className="w-full h-full"
-                    src={`https://www.youtube.com/embed/${videoSource.videoId}?autoplay=1&controls=1`}
-                    title="YouTube video player"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                ></iframe>
-            );
-        case 'vimeo':
-            return (
-                <iframe
-                    key={videoSource.videoId}
-                    className="w-full h-full"
-                    src={`https://player.vimeo.com/video/${videoSource.videoId}?autoplay=1`}
-                    title="Vimeo video player"
-                    frameBorder="0"
-                    allow="autoplay; fullscreen; picture-in-picture"
-                    allowFullScreen
-                ></iframe>
-            );
-        case 'direct':
-            return (
-                 <video
-                    key={videoSource.correctedUrl}
-                    controls
-                    autoPlay
-                    className="w-full h-full object-contain"
-                    src={videoSource.correctedUrl}
-                    onError={handleError}
-                    crossOrigin="anonymous"
-                >
-                    Your browser does not support the video tag.
-                </video>
-            );
-        default:
-            return null;
-    }
-  }
-  
-  const videoElement = renderVideo();
+  const videoUrl = videoSource?.correctedUrl;
 
   return (
     <Card className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
       <div className="relative flex-1 bg-black group">
-        {videoElement && !hasError ? (
+        {isMounted && videoUrl && !hasError ? (
           <>
-            {videoElement}
+            <ReactPlayer
+              key={videoUrl}
+              url={videoUrl}
+              playing
+              controls
+              width="100%"
+              height="100%"
+              onError={handleError}
+              config={{
+                file: {
+                  attributes: {
+                    crossOrigin: 'anonymous'
+                  }
+                }
+              }}
+            />
             <EmojiBar />
           </>
         ) : (
