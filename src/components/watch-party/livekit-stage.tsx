@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -12,10 +11,16 @@ import {
   ControlBar,
 } from '@livekit/components-react';
 import { useLocalUser } from '@/hooks/use-local-user';
-import { RoomEvent, Track, DisconnectReason } from 'livekit-client';
+import { RoomEvent, Track, DisconnectReason, setLogLevel, LogLevel } from 'livekit-client';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { ScreenShare } from 'lucide-react';
+
+// Silences benign "cannot send signal request before connected" errors in development.
+// This is a known side effect of React's Strict Mode.
+if (process.env.NODE_ENV === 'development') {
+  setLogLevel(LogLevel.warn);
+}
 
 function ScreenShareManager({ sharerId }: { sharerId: string }) {
     const room = useRoomContext();
@@ -93,7 +98,8 @@ export default function LiveKitStage({ token, roomName, sharerId }: { token: str
                     // Avoid showing a toast for expected disconnections like leaving the room.
                     if (
                         reason === DisconnectReason.CLIENT_INITIATED ||
-                        reason === DisconnectReason.SIGNAL_CLOSE
+                        reason === DisconnectReason.SIGNAL_CLOSE ||
+                        reason === DisconnectReason.DUPLICATE_IDENTITY
                     ) {
                        return;
                     }
