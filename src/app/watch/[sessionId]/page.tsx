@@ -306,7 +306,7 @@ export default function WatchPartyPage() {
 
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
-            <header className="flex items-center justify-between px-4 py-2 border-b">
+            <header className="relative z-50 flex items-center justify-between px-4 py-2 border-b">
                 <Link href="/" className="flex items-center gap-2">
                     <Logo className="h-8 w-8 text-primary" />
                     <span className="font-bold text-xl font-headline hidden sm:inline">SyncStream</span>
