@@ -87,10 +87,10 @@ export default function VideoPlayer({
                 <AlertTriangle className="h-16 w-16 mb-4 text-destructive" />
                 <h2 className="text-2xl font-bold">Video Playback Error</h2>
                 <p className="text-lg max-w-xl">
-                    Could not play the video from this link. The provider might be blocking it (CORS policy).
+                    The video provider is blocking playback on other websites (CORS policy).
                 </p>
-                <p className="text-md text-muted-foreground mt-2">
-                    Tip: Use the 'Share Screen' feature to play the video on your computer and stream it to the room.
+                <p className="text-md text-muted-foreground mt-2 max-w-2xl">
+                    Browser extensions to bypass this often don&apos;t work for embedded media players. The most reliable solution is to use the <strong>Share Screen</strong> feature to stream the video from your computer to the room.
                 </p>
              </>
         ) : (
