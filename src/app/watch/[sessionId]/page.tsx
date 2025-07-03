@@ -55,6 +55,7 @@ export default function WatchPartyPage() {
     const [localScreenStream, setLocalScreenStream] =useState<MediaStream | null>(null);
     const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
     const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
+    const isStartingShare = useRef(false);
 
 
     useEffect(() => {
@@ -127,6 +128,9 @@ export default function WatchPartyPage() {
         };
     
         if (!broadcasterId) {
+            if (isStartingShare.current) {
+                return;
+            }
             cleanupConnections();
             if (localScreenStream) {
                 localScreenStream.getTracks().forEach(track => track.stop());
@@ -137,6 +141,10 @@ export default function WatchPartyPage() {
     
         // Role: Broadcaster
         if (localUser.id === broadcasterId) {
+            if (isStartingShare.current) {
+                isStartingShare.current = false;
+            }
+
             const offersRef = collection(db, `sessions/${params.sessionId}/offers`);
             const unsubOffers = onSnapshot(offersRef, (snapshot) => {
                 snapshot.docChanges().forEach(async (change) => {
@@ -243,6 +251,7 @@ export default function WatchPartyPage() {
                 return;
             }
 
+            isStartingShare.current = true;
             const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
             
             stream.getVideoTracks()[0].addEventListener('ended', async () => {
@@ -260,6 +269,7 @@ export default function WatchPartyPage() {
             });
 
         } catch (error) {
+            isStartingShare.current = false;
             console.error("Screen share error:", error);
             if ((error as DOMException).name !== 'NotAllowedError') {
               toast({

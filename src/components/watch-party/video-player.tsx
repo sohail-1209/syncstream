@@ -57,7 +57,7 @@ export default function VideoPlayer({
     }
 
     if (screenStream) {
-      return <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline />;
+      return <video key={screenStream.id} ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline />;
     }
 
     if (videoSource && !urlError) {
