@@ -32,7 +32,7 @@ type PlaybackState = {
   isPlaying: boolean;
   seekTime: number;
   updatedBy: string;
-  timestamp: Timestamp;
+  timestamp: Timestamp | number;
 } | null;
 
 
@@ -570,3 +570,5 @@ export default function WatchPartyPage() {
         </div>
     );
 }
+
+    

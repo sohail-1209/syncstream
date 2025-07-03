@@ -88,12 +88,20 @@ export async function getSessionDetails(sessionId: string) {
         const sessionData = sessionSnap.data();
         const hasPassword = !!sessionData?.password;
 
+        let playbackState = sessionData?.playbackState || null;
+        if (playbackState && playbackState.timestamp && typeof playbackState.timestamp.toMillis === 'function') {
+            playbackState = {
+                ...playbackState,
+                timestamp: playbackState.timestamp.toMillis()
+            };
+        }
+
         return { 
             data: { 
                 hasPassword, 
                 activeSharer: sessionData?.activeSharer || null,
                 videoSource: sessionData?.videoSource || null,
-                playbackState: sessionData?.playbackState || null
+                playbackState: playbackState
             }, 
             error: null 
         };
@@ -279,4 +287,6 @@ export async function updatePlaybackState(sessionId: string, userId: string, sta
         return { success: false, error: "Failed to sync video state." };
     }
 }
+    
+
     
