@@ -5,14 +5,23 @@ import { useEffect } from 'react';
 import { LiveKitRoom, RoomAudioRenderer, VideoConference, useRoomContext } from '@livekit/components-react';
 import { useLocalUser } from '@/hooks/use-local-user';
 import { Loader2 } from 'lucide-react';
+import { RoomEvent } from 'livekit-client';
 
 function ScreenShareManager({ sharerId }: { sharerId: string }) {
     const room = useRoomContext();
     const localUser = useLocalUser();
 
     useEffect(() => {
-        if (localUser?.id === sharerId) {
-            room.localParticipant.setScreenShareEnabled(true, { audio: true });
+        const startSharing = () => {
+             if (localUser?.id === sharerId) {
+                room.localParticipant.setScreenShareEnabled(true, { audio: true });
+            }
+        }
+
+        if (room.state === 'connected') {
+            startSharing();
+        } else {
+            room.once(RoomEvent.Connected, startSharing);
         }
 
         return () => {
@@ -45,7 +54,13 @@ export default function LiveKitStage({ token, roomName, sharerId }: { token: str
                 style={{ height: '100%' }}
                 onDisconnected={() => console.log('disconnected from room')}
             >
-                <VideoConference />
+                <VideoConference controls={{
+                    microphone: true,
+                    camera: false,
+                    chat: false,
+                    screenShare: false,
+                    leave: false
+                }} />
                 <RoomAudioRenderer />
                 <ScreenShareManager sharerId={sharerId} />
             </LiveKitRoom>
