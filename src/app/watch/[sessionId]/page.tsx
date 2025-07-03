@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,7 +9,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -21,6 +21,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
+    const router = useRouter();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
 
@@ -133,6 +134,10 @@ export default function WatchPartyPage() {
         });
     }
 
+    const handleExitRoom = () => {
+        router.push('/');
+    };
+
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
             <header className="flex items-center justify-between px-4 py-2 border-b">
@@ -218,6 +223,10 @@ export default function WatchPartyPage() {
                             </div>
                         </PopoverContent>
                     </Popover>
+                    <Button variant="outline" onClick={handleExitRoom}>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Exit
+                    </Button>
                 </div>
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
