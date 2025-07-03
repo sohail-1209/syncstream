@@ -153,19 +153,20 @@ export async function deleteRoom(sessionId: string, password?: string) {
             }
         }
         
-        // Delete all subcollections
         const subcollections = ['participants', 'messages', 'offers', 'answers', 'iceCandidates'];
         for (const collName of subcollections) {
             const collRef = collection(sessionRef, collName);
             const snapshot = await getDocs(collRef);
-            const batch = writeBatch(db);
-            snapshot.docs.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
+            if (!snapshot.empty) {
+                const batch = writeBatch(db);
+                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
         }
 
         await deleteDoc(sessionRef);
 
-        return { success: true };
+        return { success: true, error: null };
 
     } catch (error) {
         console.error("Failed to delete room:", error);
@@ -199,7 +200,6 @@ export async function setBroadcaster(sessionId: string, userId: string | null) {
         const sessionRef = doc(db, 'sessions', sessionId);
 
         if (userId === null) {
-            // If stopping broadcast, clean up signaling data
             const subcollections = ['offers', 'answers', 'iceCandidates'];
             for (const collName of subcollections) {
                 const collRef = collection(sessionRef, collName);
@@ -214,9 +214,11 @@ export async function setBroadcaster(sessionId: string, userId: string | null) {
         
         await setDoc(sessionRef, { broadcasterId: userId }, { merge: true });
 
-        return { success: true };
+        return { success: true, error: null };
     } catch (error) {
         console.error("Failed to set broadcaster:", error);
-        return { error: "Failed to update broadcaster status." };
+        return { error: "Failed to update broadcaster status. Check Firestore rules." };
     }
 }
+
+    

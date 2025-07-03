@@ -30,7 +30,7 @@ export function ExistingRoomsList() {
   const [isOpen, setIsOpen] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, startDeleteTransition] = useTransition();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [passwordToDelete, setPasswordToDelete] = useState('');
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
@@ -64,6 +64,7 @@ export function ExistingRoomsList() {
   }, [isOpen, toast]);
 
   const handleJoinRoom = (sessionId: string) => {
+    setIsOpen(false);
     router.push(`/watch/${sessionId}`);
   };
 
@@ -76,24 +77,24 @@ export function ExistingRoomsList() {
   }
 
   const handleFinalDelete = async (sessionId: string, password?: string) => {
-    startDeleteTransition(async () => {
-        const response = await deleteRoom(sessionId, password);
-        if (response.error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: response.error,
-            });
-        } else {
-            toast({
-                title: 'Success',
-                description: `Room ${sessionId} has been deleted.`,
-            });
-            setSessions(prev => prev.filter(s => s.id !== sessionId));
-        }
-        setSessionToDelete(null);
-        setPasswordToDelete('');
-    });
+    setDeletingId(sessionId);
+    const response = await deleteRoom(sessionId, password);
+    if (response.error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: response.error,
+        });
+    } else {
+        toast({
+            title: 'Success',
+            description: `Room ${sessionId} has been deleted.`,
+        });
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+    }
+    setSessionToDelete(null);
+    setPasswordToDelete('');
+    setDeletingId(null);
   };
 
   const renderDeleteDialog = () => (
@@ -123,9 +124,9 @@ export function ExistingRoomsList() {
                 <Button 
                     variant="destructive" 
                     onClick={() => sessionToDelete && handleFinalDelete(sessionToDelete.id, passwordToDelete)}
-                    disabled={isDeleting}
+                    disabled={deletingId === sessionToDelete?.id}
                 >
-                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    {deletingId === sessionToDelete?.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     Delete Room
                 </Button>
             </DialogFooter>
@@ -169,9 +170,9 @@ export function ExistingRoomsList() {
                                 size="icon"
                                 onClick={() => attemptDelete(session)}
                                 className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                                disabled={isDeleting}
+                                disabled={!!deletingId}
                             >
-                                <Trash2 className="h-4 w-4" />
+                               {deletingId === session.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                             </Button>
                         </CardHeader>
                         <CardContent className="p-4 pt-0">
@@ -196,3 +197,5 @@ export function ExistingRoomsList() {
     </>
   );
 }
+
+    
