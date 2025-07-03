@@ -14,7 +14,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { collection, getDocs, query } from 'firebase/firestore';
 import { deleteRoom } from '@/app/actions';
 import { Loader2, Trash2, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -33,26 +33,29 @@ export function ExistingRoomsList() {
   useEffect(() => {
     if (!isOpen) return;
 
-    setIsLoading(true);
-    const q = query(collection(db, 'sessions'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const fetchedSessions: Session[] = [];
-      querySnapshot.forEach((doc) => {
-        fetchedSessions.push({ id: doc.id });
-      });
-      setSessions(fetchedSessions);
-      setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching sessions:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not fetch existing rooms.',
-        });
-        setIsLoading(false);
-    });
+    const fetchRooms = async () => {
+        setIsLoading(true);
+        try {
+            const q = query(collection(db, 'sessions'));
+            const querySnapshot = await getDocs(q);
+            const fetchedSessions: Session[] = [];
+            querySnapshot.forEach((doc) => {
+                fetchedSessions.push({ id: doc.id });
+            });
+            setSessions(fetchedSessions);
+        } catch (error) {
+            console.error("Error fetching sessions:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not fetch existing rooms.',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    return () => unsubscribe();
+    fetchRooms();
   }, [isOpen, toast]);
 
   const handleJoinRoom = (sessionId: string) => {
@@ -72,6 +75,8 @@ export function ExistingRoomsList() {
             title: 'Success',
             description: `Room ${sessionId} has been deleted.`,
         });
+        // Refetch rooms after deletion
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
     }
   };
 
