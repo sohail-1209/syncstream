@@ -17,7 +17,7 @@ import { processAndGetVideoUrl } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
@@ -43,15 +43,20 @@ export default function WatchPartyPage() {
     useEffect(() => {
         if (!localUser || !params.sessionId) return;
 
-        const userRef = doc(db, "sessions", params.sessionId, "participants", localUser.id);
+        const sessionRef = doc(db, "sessions", params.sessionId);
+        const userRef = doc(collection(sessionRef, "participants"), localUser.id);
 
         const setPresence = async () => {
+             // Ensure the session document itself exists with some data
+             await setDoc(sessionRef, { updatedAt: serverTimestamp() }, { merge: true });
              await setDoc(userRef, { ...localUser, lastSeen: serverTimestamp() }, { merge: true });
         }
+        
         setPresence();
 
         const interval = setInterval(() => {
-            setPresence();
+            // Only need to update participant presence in the interval
+            setDoc(userRef, { lastSeen: serverTimestamp() }, { merge: true });
         }, 60 * 1000); // Update every minute
 
         return () => {
