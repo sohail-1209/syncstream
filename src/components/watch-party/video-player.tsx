@@ -16,7 +16,7 @@ type PlaybackState = {
   isPlaying: boolean;
   seekTime: number;
   updatedBy: string;
-  timestamp: number;
+  updatedAt: number;
 } | null;
 
 export default function VideoPlayer({ 

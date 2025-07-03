@@ -32,7 +32,7 @@ type PlaybackState = {
   isPlaying: boolean;
   seekTime: number;
   updatedBy: string;
-  timestamp: number;
+  updatedAt: number;
 } | null;
 
 
@@ -126,10 +126,10 @@ function WatchPartyContent({
             setVideoSource(data?.videoSource ?? null);
             
             const remotePlaybackState = data?.playbackState || null;
-            if (remotePlaybackState && remotePlaybackState.timestamp && typeof remotePlaybackState.timestamp.toMillis === 'function') {
+            if (remotePlaybackState && remotePlaybackState.updatedAt && typeof remotePlaybackState.updatedAt.toMillis === 'function') {
                  setPlaybackState({
                      ...remotePlaybackState,
-                     timestamp: remotePlaybackState.timestamp.toMillis()
+                     updatedAt: remotePlaybackState.updatedAt.toMillis()
                  });
             } else {
                 setPlaybackState(remotePlaybackState);
@@ -691,4 +691,3 @@ export default function WatchPartyPage() {
     
 
     
-

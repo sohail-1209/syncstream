@@ -90,10 +90,10 @@ export async function getSessionDetails(sessionId: string) {
         const hasPassword = !!sessionData?.password;
 
         let playbackState = sessionData?.playbackState || null;
-        if (playbackState && playbackState.timestamp && typeof playbackState.timestamp.toMillis === 'function') {
+        if (playbackState && playbackState.updatedAt && typeof playbackState.updatedAt.toMillis === 'function') {
             playbackState = {
                 ...playbackState,
-                timestamp: playbackState.timestamp.toMillis()
+                updatedAt: playbackState.updatedAt.toMillis()
             };
         }
 
@@ -260,7 +260,7 @@ export async function setVideoSourceForSession(sessionId: string, videoSource: P
                 isPlaying: false,
                 seekTime: 0,
                 updatedBy: 'system',
-                timestamp: serverTimestamp()
+                updatedAt: serverTimestamp()
             }
         };
         if (videoSource) {
@@ -280,7 +280,7 @@ export async function updatePlaybackState(sessionId: string, userId: string, sta
         const playbackState = {
             ...state,
             updatedBy: userId,
-            timestamp: serverTimestamp()
+            updatedAt: serverTimestamp()
         };
         await updateDoc(sessionRef, { playbackState });
         return { success: true, error: null };
