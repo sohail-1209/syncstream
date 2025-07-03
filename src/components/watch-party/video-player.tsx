@@ -27,11 +27,7 @@ export default function VideoPlayer({
   
   useEffect(() => {
     if (videoRef.current) {
-        if (screenStream && videoRef.current.srcObject !== screenStream) {
-            videoRef.current.srcObject = screenStream;
-        } else if (!screenStream && videoRef.current.srcObject) {
-            videoRef.current.srcObject = null;
-        }
+      videoRef.current.srcObject = screenStream;
     }
   }, [screenStream]);
 
