@@ -156,6 +156,13 @@ function WatchPartyContent({
 
 
     const handleSetVideo = () => {
+        if (!isHost) {
+             toast({
+                variant: 'destructive',
+                title: 'Only the host can change the video.',
+            });
+            return;
+        }
         if (activeSharer) {
             toast({
                 variant: 'destructive',
@@ -182,17 +189,25 @@ function WatchPartyContent({
 
     const handleShareScreen = async () => {
        startShareToggleTransition(async () => {
-           if (activeSharer) {
-                if (amSharing) {
-                    await setScreenSharer(sessionId, null);
-                } else {
-                    toast({ variant: 'destructive', title: 'Action not allowed', description: 'Another user is already sharing their screen.' });
-                }
-           } else { 
-                await setVideoSourceForSession(sessionId, null);
-                await setScreenSharer(sessionId, user!.id);
+           if (activeSharer) { // Someone is sharing
+               if (amSharing || isHost) {
+                   // If it's me sharing, OR if I'm the host, I can stop the share.
+                   await setScreenSharer(sessionId, null);
+               } else {
+                   // It's someone else sharing, and I'm not the host. I can't do anything.
+                   toast({ variant: 'destructive', title: 'Action not allowed', description: 'Another user is already sharing their screen.' });
+               }
+           } else { // No one is sharing
+               if (isHost) {
+                   // If I'm the host, I can start sharing.
+                   await setVideoSourceForSession(sessionId, null);
+                   await setScreenSharer(sessionId, user!.id);
+               } else {
+                   // I'm not the host, I can't start a share.
+                   toast({ variant: 'destructive', title: 'Action not allowed', description: 'Only the host can start a screen share.' });
+               }
            }
-       })
+       });
     };
     
     const handleToggleMic = () => {
@@ -367,7 +382,7 @@ function WatchPartyContent({
                         </Button>
                     </RecommendationsModal>
 
-                    <Button variant="outline" size="icon" onClick={handleShareScreen} disabled={(activeSharer !== null && !amSharing) || isTogglingShare}>
+                    <Button variant="outline" size="icon" onClick={handleShareScreen} disabled={isTogglingShare}>
                         {isTogglingShare ? <Loader2 className="h-4 w-4 animate-spin" /> : (amSharing ? <VideoOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />)}
                         <span className="sr-only">{isTogglingShare ? "Loading..." : amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
                     </Button>
@@ -381,7 +396,7 @@ function WatchPartyContent({
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
                         <PopoverTrigger asChild>
-                             <Button variant="outline" size="icon" disabled={!!activeSharer || !isHost}>
+                             <Button variant="outline" size="icon" disabled={!isHost}>
                                 <LinkIcon className="h-4 w-4" />
                                 <span className="sr-only">Set Video</span>
                             </Button>
@@ -676,3 +691,4 @@ export default function WatchPartyPage() {
     
 
     
+
