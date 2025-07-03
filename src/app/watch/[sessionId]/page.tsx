@@ -56,6 +56,7 @@ export default function WatchPartyPage() {
     const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
     const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
     const isStartingShare = useRef(false);
+    const candidateQueue = useRef<RTCIceCandidate[]>([]);
 
 
     useEffect(() => {
@@ -213,7 +214,6 @@ export default function WatchPartyPage() {
         else {
             const pc = new RTCPeerConnection(rtcConfig);
             peerConnections.current[broadcasterId] = pc;
-            const candidateQueue = useRef<RTCIceCandidate[]>([]);
     
             pc.onicecandidate = e => {
                 if(e.candidate) {
