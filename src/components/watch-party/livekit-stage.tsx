@@ -2,11 +2,20 @@
 'use client';
 
 import { useEffect } from 'react';
-import { LiveKitRoom, RoomAudioRenderer, VideoConference, useRoomContext } from '@livekit/components-react';
+import {
+  LiveKitRoom,
+  RoomAudioRenderer,
+  useRoomContext,
+  useTracks,
+  GridLayout,
+  ParticipantTile,
+  ControlBar,
+} from '@livekit/components-react';
 import { useLocalUser } from '@/hooks/use-local-user';
-import { Loader2 } from 'lucide-react';
-import { RoomEvent } from 'livekit-client';
+import { RoomEvent, Track } from 'livekit-client';
 import { useToast } from '@/hooks/use-toast';
+import { Card } from '@/components/ui/card';
+import { ScreenShare } from 'lucide-react';
 
 function ScreenShareManager({ sharerId }: { sharerId: string }) {
     const room = useRoomContext();
@@ -37,6 +46,32 @@ function ScreenShareManager({ sharerId }: { sharerId: string }) {
     return null;
 }
 
+function CustomVideoConference() {
+  const tracks = useTracks(
+    [
+      { source: Track.Source.ScreenShare, withPlaceholder: false },
+    ],
+    { onlySubscribed: true },
+  );
+
+  if (tracks.length === 0) {
+    return (
+      <Card className="w-full h-full bg-card flex flex-col items-center justify-center overflow-hidden text-muted-foreground bg-black/50">
+        <ScreenShare className="h-16 w-16 mb-4" />
+        <h2 className="text-2xl font-bold">Waiting for screen share...</h2>
+        <p className="text-lg">The host has not started sharing their screen yet.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <GridLayout tracks={tracks} style={{ height: 'calc(100% - 50px)' }}>
+      <ParticipantTile />
+    </GridLayout>
+  );
+}
+
+
 export default function LiveKitStage({ token, roomName, sharerId }: { token: string; roomName: string; sharerId: string }) {
     const { toast } = useToast();
 
@@ -56,22 +91,28 @@ export default function LiveKitStage({ token, roomName, sharerId }: { token: str
                 style={{ height: '100%' }}
                 onDisconnected={(reason) => {
                     console.log('disconnected from room', reason);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Disconnected from room',
-                        description: reason?.message ?? 'The connection was lost.',
-                    });
+                    // Avoid showing a toast for expected disconnections
+                    if (reason && reason.message !== 'Client initiated disconnect' && reason.message !== 'user closed connection') {
+                       toast({
+                            variant: 'destructive',
+                            title: 'Disconnected from room',
+                            description: reason?.message ?? 'The connection was lost.',
+                        });
+                    }
                 }}
             >
-                <VideoConference controls={{
-                    microphone: true,
-                    camera: false,
-                    chat: false,
-                    screenShare: false,
-                    leave: false
-                }} />
+                <CustomVideoConference />
                 <RoomAudioRenderer />
                 <ScreenShareManager sharerId={sharerId} />
+                <ControlBar
+                    controls={{
+                        microphone: true,
+                        camera: false,
+                        chat: false,
+                        screenShare: false,
+                        leave: false,
+                    }}
+                />
             </LiveKitRoom>
         </div>
     );
