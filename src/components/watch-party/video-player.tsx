@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import EmojiBar from "./emoji-bar";
 import { Film, AlertTriangle, Maximize, Minimize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import ReactPlayer from 'react-player';
 import type { LocalUser } from "@/hooks/use-local-user";
@@ -32,6 +32,7 @@ export default function VideoPlayer({
 }) {
   const { toast } = useToast();
   const playerRef = useRef<ReactPlayer>(null);
+  const programmaticSeekRef = useRef(false);
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -76,42 +77,44 @@ export default function VideoPlayer({
     // Sync seek time, with a tolerance to prevent seeking on minor differences
     const localTime = playerRef.current.getCurrentTime() || 0;
     if (Math.abs(localTime - playbackState.seekTime) > 2) { 
+        programmaticSeekRef.current = true;
         playerRef.current.seekTo(playbackState.seekTime, 'seconds');
     }
 
-  }, [playbackState, isReady, user, localIsPlaying]);
+  }, [playbackState, isReady, user]);
 
 
-  const handleReady = () => {
+  const handleReady = useCallback(() => {
     setIsReady(true);
     // When a new video is loaded, seek to the last known position
     if (playbackState && playerRef.current) {
+        programmaticSeekRef.current = true;
         playerRef.current.seekTo(playbackState.seekTime, 'seconds');
         setLocalIsPlaying(playbackState.isPlaying);
     }
-  };
+  }, [playbackState]);
 
-  const handlePlay = () => {
+  const handlePlay = useCallback(() => {
     if (!localIsPlaying) {
       setLocalIsPlaying(true);
       onPlaybackChange({ isPlaying: true, seekTime: playerRef.current?.getCurrentTime() || 0 });
     }
-  };
+  }, [localIsPlaying, onPlaybackChange]);
 
-  const handlePause = () => {
+  const handlePause = useCallback(() => {
     if (localIsPlaying) {
       setLocalIsPlaying(false);
       onPlaybackChange({ isPlaying: false, seekTime: playerRef.current?.getCurrentTime() || 0 });
     }
-  };
+  }, [localIsPlaying, onPlaybackChange]);
 
-  const handleSeek = (seconds: number) => {
-    // This is fired when user drags the progress bar.
-    // We update our local state to feel instant, then broadcast.
-    setLocalIsPlaying(localIsPlaying); // to be sure
-    playerRef.current?.seekTo(seconds, 'seconds');
+  const handleSeek = useCallback((seconds: number) => {
+    if (programmaticSeekRef.current) {
+        programmaticSeekRef.current = false;
+        return;
+    }
     onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
-  };
+  }, [localIsPlaying, onPlaybackChange]);
   
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -188,7 +191,7 @@ export default function VideoPlayer({
   }
   
   return (
-    <Card className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
+    <Card className="w-full h-full bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
       <div className="relative flex-1 bg-black group">
         {isMounted && videoSource && !urlError ? (
           <>

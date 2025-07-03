@@ -2,7 +2,7 @@
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState, useTransition, useRef } from "react";
+import { useEffect, useState, useTransition, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -168,6 +168,7 @@ function WatchPartyContent({
                     toast({ variant: 'destructive', title: 'Action not allowed', description: 'Another user is already sharing their screen.' });
                 }
            } else { 
+                await setVideoSourceForSession(sessionId, null);
                 await setScreenSharer(sessionId, user!.id);
            }
        })
@@ -227,10 +228,10 @@ function WatchPartyContent({
         }
     };
 
-    const handlePlaybackChange = async (newState: { isPlaying: boolean; seekTime: number }) => {
+    const handlePlaybackChange = useCallback(async (newState: { isPlaying: boolean; seekTime: number }) => {
         if (!user) return;
         await updatePlaybackState(sessionId, user.id, newState);
-    };
+    }, [user, sessionId]);
 
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
