@@ -34,7 +34,7 @@ export default function VideoPlayer({
 }) {
   const { toast } = useToast();
   const playerRef = useRef<ReactPlayer>(null);
-  const syncState = useRef<{ isSeeking: boolean, seekTo: number | null }>({ isSeeking: false, seekTo: null });
+  const isSyncing = useRef(false);
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -51,7 +51,6 @@ export default function VideoPlayer({
   useEffect(() => {
     setUrlError(false);
     setIsReady(false);
-    syncState.current = { isSeeking: false, seekTo: null };
     if (playbackState) {
         setLocalIsPlaying(playbackState.isPlaying);
     } else {
@@ -61,43 +60,56 @@ export default function VideoPlayer({
 
   // Sync remote state to local player
   useEffect(() => {
-    if (!playbackState || !isReady || !playerRef.current || !user) {
+    if (!playbackState || !isReady || !playerRef.current || !user || !isMounted) {
         return;
     }
-
+    
+    // Only sync if the update is from another user
     if (playbackState.updatedBy === user.id) {
         return;
     }
     
+    isSyncing.current = true;
+
+    // Sync playing state
     if (localIsPlaying !== playbackState.isPlaying) {
         setLocalIsPlaying(playbackState.isPlaying);
     }
 
+    // Sync seek time, with a tolerance for drift
     const localTime = playerRef.current.getCurrentTime() || 0;
     const remoteTime = typeof playbackState.seekTime === 'number' ? playbackState.seekTime : 0;
     
-    // Generous threshold to prevent sync-fights during normal playback
     if (Math.abs(localTime - remoteTime) > 1.5) { 
-        if (!syncState.current.isSeeking) {
-            syncState.current = { isSeeking: true, seekTo: remoteTime };
-            playerRef.current.seekTo(remoteTime, 'seconds');
-        }
+        playerRef.current.seekTo(remoteTime, 'seconds');
     }
+    
+    // The isSyncing flag is reset in the onProgress handler when seeking is complete
+    // or immediately if no seeking is needed. A timeout provides a fallback.
+    const syncTimeout = setTimeout(() => {
+      if (isSyncing.current) {
+        isSyncing.current = false;
+      }
+    }, 500);
 
-  }, [playbackState, isReady, user, localIsPlaying]);
+    return () => clearTimeout(syncTimeout);
+
+  }, [playbackState, isReady, user, localIsPlaying, isMounted]);
 
 
   const handleReady = useCallback(() => {
     setIsReady(true);
     if (playbackState && playerRef.current) {
-        syncState.current = { isSeeking: true, seekTo: playbackState.seekTime };
+        isSyncing.current = true;
         playerRef.current.seekTo(playbackState.seekTime, 'seconds');
         setLocalIsPlaying(playbackState.isPlaying);
     }
   }, [playbackState]);
 
   const handlePlay = useCallback(() => {
+    if (isSyncing.current) return;
     if (!isHost) return;
+
     if (!localIsPlaying) {
       setLocalIsPlaying(true);
       if (user?.id) {
@@ -107,7 +119,9 @@ export default function VideoPlayer({
   }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
 
   const handlePause = useCallback(() => {
+    if (isSyncing.current) return;
     if (!isHost) return;
+    
     if (localIsPlaying) {
       setLocalIsPlaying(false);
       if (user?.id) {
@@ -117,20 +131,17 @@ export default function VideoPlayer({
   }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
 
   const handleSeek = useCallback((seconds: number) => {
+    if (isSyncing.current) return;
     if (!isHost) return;
-    if (syncState.current.isSeeking) {
-        return;
-    }
+    
     if (user?.id) {
         onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
     }
   }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
   
   const handleProgress = useCallback((progress: OnProgressProps) => {
-    if (syncState.current.isSeeking && syncState.current.seekTo !== null) {
-      if (Math.abs(progress.playedSeconds - syncState.current.seekTo) < 0.5) {
-        syncState.current = { isSeeking: false, seekTo: null };
-      }
+    if (isSyncing.current) {
+      isSyncing.current = false;
     }
   }, []);
 
@@ -177,17 +188,17 @@ export default function VideoPlayer({
   const renderPlaceholder = () => {
     let Icon = Film;
     let title = "No Video Loaded";
-    let description = 'Use the "Set Video" or "Share Screen" buttons to start.';
+    let description = 'The host can use the "Set Video" or "Share Screen" buttons to start.';
 
     if (urlError) {
       Icon = AlertTriangle;
       title = "Video Playback Error";
-      description = "The provider is blocking playback here. Try using the 'Share Screen' feature instead.";
+      description = "The provider is blocking playback here. The host should try using the 'Share Screen' feature instead.";
     }
 
     return (
-      <div ref={placeholderRef} className="w-full h-full bg-black/50 flex flex-col">
-        <div className="w-full flex justify-end p-2">
+      <div ref={placeholderRef} className="w-full h-full bg-black/50 flex flex-col pointer-events-none">
+        <div className="w-full flex justify-end p-2 pointer-events-auto">
             <Button
                 variant="ghost"
                 size="icon"
@@ -235,6 +246,7 @@ export default function VideoPlayer({
                 }
               }}
             />
+            {!isHost && <div className="absolute inset-0 z-10" />}
             <EmojiBar />
           </>
         ) : (
@@ -244,5 +256,3 @@ export default function VideoPlayer({
     </Card>
   );
 }
-
-    
