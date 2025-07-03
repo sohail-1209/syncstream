@@ -84,8 +84,9 @@ export default function VideoPlayer({
         playerRef.current.seekTo(remoteTime, 'seconds');
     }
     
-    // The isSyncing flag is reset in the onProgress handler when seeking is complete
-    // or immediately if no seeking is needed. A timeout provides a fallback.
+    // The isSyncing flag is reset by this timeout.
+    // This provides a reliable window for the player to update its state
+    // without its event handlers (onPlay, onPause) creating a feedback loop.
     const syncTimeout = setTimeout(() => {
       if (isSyncing.current) {
         isSyncing.current = false;
@@ -140,9 +141,9 @@ export default function VideoPlayer({
   }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
   
   const handleProgress = useCallback((progress: OnProgressProps) => {
-    if (isSyncing.current) {
-      isSyncing.current = false;
-    }
+    // This is intentionally left blank.
+    // Previously, it reset the isSyncing flag, which caused a race condition.
+    // The guard is now reliably reset by a timeout in the main sync effect.
   }, []);
 
   useEffect(() => {
@@ -197,8 +198,8 @@ export default function VideoPlayer({
     }
 
     return (
-      <div ref={placeholderRef} className="w-full h-full bg-black/50 flex flex-col pointer-events-none">
-        <div className="w-full flex justify-end p-2 pointer-events-auto">
+      <div ref={placeholderRef} className="w-full h-full bg-black/50 flex flex-col">
+        <div className="w-full flex justify-end p-2">
             <Button
                 variant="ghost"
                 size="icon"
@@ -237,7 +238,6 @@ export default function VideoPlayer({
               onPause={handlePause}
               onSeek={handleSeek}
               onProgress={handleProgress}
-              onError={handleUrlError}
               config={{
                 file: {
                   attributes: {
