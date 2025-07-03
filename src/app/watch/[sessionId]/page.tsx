@@ -56,6 +56,7 @@ export default function WatchPartyPage() {
     const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
     const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
     const candidateQueue = useRef<RTCIceCandidate[]>([]);
+    const broadcasterCandidateQueues = useRef<Record<string, RTCIceCandidate[]>>({});
     const [isStartingShare, setIsStartingShare] = useState(false);
 
 
@@ -134,6 +135,7 @@ export default function WatchPartyPage() {
             Object.values(peerConnections.current).forEach(pc => pc.close());
             peerConnections.current = {};
             setRemoteScreenStream(null);
+            broadcasterCandidateQueues.current = {};
         };
     
         if (!broadcasterId) {
@@ -174,6 +176,15 @@ export default function WatchPartyPage() {
                         
                         try {
                             await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                            
+                            const queuedCandidates = broadcasterCandidateQueues.current[viewerId] || [];
+                            for (const candidate of queuedCandidates) {
+                                try {
+                                    await pc.addIceCandidate(candidate);
+                                } catch (e) { console.error("Error adding queued ICE candidate for broadcaster: ", e); }
+                            }
+                            broadcasterCandidateQueues.current[viewerId] = [];
+
                             const answer = await pc.createAnswer();
                             await pc.setLocalDescription(answer);
                             await setDoc(doc(db, `sessions/${params.sessionId}/answers`, viewerId), { from: localUser.id, answer: answer });
@@ -190,11 +201,19 @@ export default function WatchPartyPage() {
                 snapshot.docChanges().forEach(async (change) => {
                     if (change.type === 'added') {
                         const data = change.doc.data();
-                        const pc = peerConnections.current[data.from];
+                        const viewerId = data.from;
+                        const candidate = new RTCIceCandidate(data.candidate);
+                        const pc = peerConnections.current[viewerId];
+
                         if (pc && pc.remoteDescription) {
                             try {
-                                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                                await pc.addIceCandidate(candidate);
                             } catch (e) { console.error("Error adding ICE candidate: ", e); }
+                        } else {
+                            if (!broadcasterCandidateQueues.current[viewerId]) {
+                                broadcasterCandidateQueues.current[viewerId] = [];
+                            }
+                            broadcasterCandidateQueues.current[viewerId].push(candidate);
                         }
                         await deleteDoc(change.doc.ref);
                     }
@@ -216,6 +235,7 @@ export default function WatchPartyPage() {
 
             return () => {
                 unsubscribers.forEach(unsub => unsub());
+                broadcasterCandidateQueues.current = {};
             }
         } 
         else {
@@ -306,13 +326,8 @@ export default function WatchPartyPage() {
         try {
             // --- Logic to STOP screen sharing ---
             if (broadcasterId && broadcasterId === localUser?.id) {
-                const result = await setBroadcaster(params.sessionId, null);
-                if (result.error) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Failed to stop sharing.' });
-                } else {
-                    setBroadcasterId(null);
-                    toast({ title: "Screen Sharing Stopped" });
-                }
+                await setBroadcaster(params.sessionId, null);
+                // The useEffect will handle state cleanup
                 return;
             }
 
@@ -329,6 +344,7 @@ export default function WatchPartyPage() {
             const onStreamEnd = async () => {
                 stream.getVideoTracks()[0].removeEventListener('ended', onStreamEnd);
                 const sessionDoc = await getDoc(doc(db, 'sessions', params.sessionId));
+                // Only stop the broadcast if I am still the broadcaster
                 if (sessionDoc.data()?.broadcasterId === localUser?.id) {
                     await setBroadcaster(params.sessionId, null);
                 }
@@ -338,18 +354,24 @@ export default function WatchPartyPage() {
             setVideoSource(null);
             setLocalScreenStream(stream);
             
+            // Optimistically update the UI
+            setBroadcasterId(localUser!.id);
+            
             const result = await setBroadcaster(params.sessionId, localUser!.id);
 
             if (result.error) {
+                // If the backend fails, revert the optimistic update and stop the stream
                 stream.getTracks().forEach(track => track.stop());
                 setLocalScreenStream(null);
+                setBroadcasterId(null); // Revert
+                await setBroadcaster(params.sessionId, null); // Ensure backend is clean
+
                 toast({
                     variant: 'destructive',
                     title: 'Failed to start sharing',
                     description: result.error,
                 });
             } else {
-                setBroadcasterId(localUser!.id);
                 toast({
                     title: "Screen Sharing Started",
                     description: "You are now sharing your screen.",
@@ -524,9 +546,9 @@ export default function WatchPartyPage() {
                         </Button>
                     </RecommendationsModal>
 
-                     <Button variant="outline" onClick={handleShareScreen} disabled={broadcasterId !== null && !amBroadcaster}>
+                     <Button variant="outline" onClick={handleShareScreen} disabled={(broadcasterId !== null && !amBroadcaster) || isStartingShare}>
                         <ScreenShare className="h-4 w-4 mr-2" />
-                        {amBroadcaster ? 'Stop Sharing' : 'Share Screen'}
+                        {isStartingShare ? "Starting..." : amBroadcaster ? 'Stop Sharing' : 'Share Screen'}
                     </Button>
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
@@ -596,7 +618,7 @@ export default function WatchPartyPage() {
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
-                    <VideoPlayer key={broadcasterId} videoSource={broadcasterId ? null : videoSource} screenStream={screenStream} isBroadcaster={amBroadcaster} />
+                    <VideoPlayer key={`${broadcasterId}-${amBroadcaster}`} videoSource={broadcasterId ? null : videoSource} screenStream={screenStream} isBroadcaster={amBroadcaster} />
                 </div>
                 <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
                     <Sidebar sessionId={params.sessionId} user={localUser} />
@@ -605,3 +627,5 @@ export default function WatchPartyPage() {
         </div>
     );
 }
+
+    
