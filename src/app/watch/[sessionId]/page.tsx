@@ -55,7 +55,6 @@ export default function WatchPartyPage() {
     const [localScreenStream, setLocalScreenStream] =useState<MediaStream | null>(null);
     const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
     const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
-    const isStartingShare = useRef(false);
     const candidateQueue = useRef<RTCIceCandidate[]>([]);
 
 
@@ -118,14 +117,14 @@ export default function WatchPartyPage() {
             }
         });
         return () => unsub();
-    }, [params.sessionId, authStatus]);
+    }, [params.sessionId, authStatus, broadcasterId]);
 
 
     // Main WebRTC Logic
     useEffect(() => {
         if (authStatus !== 'authenticated' || !localUser) return;
     
-        if (localUser.id === broadcasterId && !localScreenStream && !isStartingShare.current) {
+        if (localUser.id === broadcasterId && !localScreenStream) {
             setBroadcaster(params.sessionId, null);
             return;
         }
@@ -137,7 +136,6 @@ export default function WatchPartyPage() {
         };
     
         if (!broadcasterId) {
-            if (isStartingShare.current) return;
             cleanupConnections();
             if (localScreenStream) {
                 localScreenStream.getTracks().forEach(track => track.stop());
@@ -149,10 +147,6 @@ export default function WatchPartyPage() {
         const unsubscribers: (() => void)[] = [];
     
         if (localUser.id === broadcasterId) {
-            if (isStartingShare.current) {
-                isStartingShare.current = false;
-            }
-
             const offersRef = collection(db, `sessions/${params.sessionId}/offers`);
             const unsubOffers = onSnapshot(offersRef, (snapshot) => {
                 snapshot.docChanges().forEach(async (change) => {
@@ -309,32 +303,35 @@ export default function WatchPartyPage() {
 
     const handleShareScreen = async () => {
         try {
+            // --- Logic to STOP screen sharing ---
             if (broadcasterId && broadcasterId === localUser?.id) {
                 const result = await setBroadcaster(params.sessionId, null);
                 if (result.error) {
                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to stop sharing.' });
                 } else {
+                    // Optimistic update
+                    setBroadcasterId(null);
                     toast({ title: "Screen Sharing Stopped" });
                 }
                 return;
             }
 
+            // --- Prevent another user from starting a share ---
             if (broadcasterId && broadcasterId !== localUser?.id) {
                 toast({ variant: 'destructive', title: 'Action not allowed', description: 'Another user is already sharing their screen.' });
                 return;
             }
 
-            isStartingShare.current = true;
+            // --- Logic to START screen sharing ---
             const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: { echoCancellation: true, noiseSuppression: true } });
             
+            // This handles when the user clicks the browser's native "Stop sharing" button
             const onStreamEnd = async () => {
                 stream.getVideoTracks()[0].removeEventListener('ended', onStreamEnd);
                 const sessionDoc = await getDoc(doc(db, 'sessions', params.sessionId));
+                // Only act if we are still the broadcaster
                 if (sessionDoc.data()?.broadcasterId === localUser?.id) {
-                    const result = await setBroadcaster(params.sessionId, null);
-                     if (!result.error) {
-                        toast({ title: "Screen Sharing Stopped" });
-                    }
+                    await setBroadcaster(params.sessionId, null);
                 }
             };
             stream.getVideoTracks()[0].addEventListener('ended', onStreamEnd);
@@ -342,18 +339,21 @@ export default function WatchPartyPage() {
             setVideoSource(null);
             setLocalScreenStream(stream);
             
+            // Set this user as the broadcaster in the database
             const result = await setBroadcaster(params.sessionId, localUser!.id);
 
             if (result.error) {
+                // If the database update fails, stop everything
                 stream.getTracks().forEach(track => track.stop());
                 setLocalScreenStream(null);
-                isStartingShare.current = false;
                 toast({
                     variant: 'destructive',
                     title: 'Failed to start sharing',
                     description: result.error,
                 });
             } else {
+                // Optimistically update the local state immediately
+                setBroadcasterId(localUser!.id);
                 toast({
                     title: "Screen Sharing Started",
                     description: "You are now sharing your screen.",
@@ -361,7 +361,6 @@ export default function WatchPartyPage() {
             }
 
         } catch (error) {
-            isStartingShare.current = false;
             if ((error as DOMException).name !== 'NotAllowedError') {
               console.error("Screen share error:", error);
               toast({
@@ -608,5 +607,3 @@ export default function WatchPartyPage() {
         </div>
     );
 }
-
-    
