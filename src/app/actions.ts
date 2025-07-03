@@ -168,3 +168,24 @@ export async function deleteRoom(sessionId: string, password?: string) {
         return { error: "Failed to delete room. Please try again." };
     }
 }
+
+export async function getSessionPassword(sessionId: string) {
+    try {
+        if (!sessionId) {
+            return { data: null, error: "Session ID is required." };
+        }
+        const sessionRef = doc(db, 'sessions', sessionId);
+        const sessionSnap = await getDoc(sessionRef);
+
+        if (!sessionSnap.exists()) {
+            return { data: null, error: "Room not found." };
+        }
+
+        const password = sessionSnap.data()?.password;
+        return { data: { password: password || null }, error: null };
+
+    } catch (error) {
+        console.error("Failed to get session password:", error);
+        return { data: null, error: "Could not retrieve room password." };
+    }
+}

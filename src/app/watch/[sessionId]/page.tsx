@@ -10,11 +10,11 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
-import { processAndGetVideoUrl, getSessionDetails, verifyPassword } from "@/app/actions";
+import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPassword } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
@@ -42,6 +42,9 @@ export default function WatchPartyPage() {
     const [authError, setAuthError] = useState<string | null>(null);
     const [passwordInput, setPasswordInput] = useState('');
     const [isVerifying, startVerifyTransition] = useTransition();
+    const [hasPassword, setHasPassword] = useState(false);
+    const [sessionPassword, setSessionPassword] = useState<string | null>(null);
+    const [isFetchingPassword, startFetchPasswordTransition] = useTransition();
 
 
     useEffect(() => {
@@ -51,6 +54,7 @@ export default function WatchPartyPage() {
                 setAuthError(result.error);
                 setAuthStatus('error');
             } else if (result.data) {
+                setHasPassword(result.data.hasPassword);
                 if (result.data.hasPassword) {
                     setAuthStatus('prompt_password');
                 } else {
@@ -177,6 +181,19 @@ export default function WatchPartyPage() {
             }
         });
     }
+    
+    const handleFetchPassword = () => {
+        if (!params.sessionId) return;
+        startFetchPasswordTransition(async () => {
+            const result = await getSessionPassword(params.sessionId);
+            if (result.error) {
+                setSessionPassword('Error');
+                toast({ variant: 'destructive', title: 'Error', description: result.error });
+            } else if (result.data) {
+                setSessionPassword(result.data.password ?? 'No Password');
+            }
+        });
+    };
 
 
     if (authStatus === 'checking') {
@@ -246,7 +263,37 @@ export default function WatchPartyPage() {
 
                 <div className="hidden md:flex flex-col items-center">
                     <span className="text-xs text-muted-foreground">ROOM CODE</span>
-                    <Badge variant="outline" className="text-base font-mono tracking-widest px-3 py-1">{params.sessionId}</Badge>
+                    <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="text-base font-mono tracking-widest px-3 py-1">{params.sessionId}</Badge>
+                        {hasPassword && (
+                            <Popover onOpenChange={(open) => {
+                                if (open) {
+                                    handleFetchPassword();
+                                } else {
+                                    setTimeout(() => setSessionPassword(null), 150);
+                                }
+                            }}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                        <Eye className="h-4 w-4" />
+                                        <span className="sr-only">Show Room Password</span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-4">
+                                    <div className="flex flex-col items-center gap-2 text-center">
+                                        <h4 className="font-medium leading-none">Room Password</h4>
+                                        <div className="min-h-[2rem] flex items-center justify-center">
+                                            {isFetchingPassword || sessionPassword === null ? (
+                                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground"/>
+                                            ) : (
+                                                <p className="font-mono text-lg font-bold text-primary">{sessionPassword}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2">
