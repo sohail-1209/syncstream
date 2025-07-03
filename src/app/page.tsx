@@ -32,6 +32,11 @@ export default function Home() {
     return Math.random().toString(36).substring(2, 8);
   }
 
+  const handleCreateRoom = () => {
+    const newRoomId = createNewRoomId();
+    router.push(`/watch/${newRoomId}`);
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">
       <div className="text-center space-y-6 max-w-2xl mx-auto">
@@ -47,11 +52,9 @@ export default function Home() {
           next.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-           <Button asChild size="lg" className="font-bold text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Link href={`/watch/${createNewRoomId()}`}>
+           <Button onClick={handleCreateRoom} size="lg" className="font-bold text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground">
               <Clapperboard className="mr-2 h-6 w-6" />
               Create Watch Party
-            </Link>
           </Button>
           <Dialog>
             <DialogTrigger asChild>
