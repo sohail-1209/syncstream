@@ -3,7 +3,7 @@
 
 import { Card } from "@/components/ui/card";
 import EmojiBar from "./emoji-bar";
-import { Film, AlertTriangle } from "lucide-react";
+import { Film, AlertTriangle, ScreenShare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useRef } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -26,8 +26,12 @@ export default function VideoPlayer({
   }, []);
   
   useEffect(() => {
-    if (videoRef.current && screenStream) {
-      videoRef.current.srcObject = screenStream;
+    if (videoRef.current) {
+        if (screenStream && videoRef.current.srcObject !== screenStream) {
+            videoRef.current.srcObject = screenStream;
+        } else if (!screenStream && videoRef.current.srcObject) {
+            videoRef.current.srcObject = null;
+        }
     }
   }, [screenStream]);
 
@@ -41,7 +45,7 @@ export default function VideoPlayer({
     toast({
       title: "Video Error",
       description:
-        "Could not play the content. It may be an invalid link, private, removed, or the provider could be blocking it (CORS policy).",
+        "Could not play the content. The provider may be blocking it (CORS policy). The most reliable solution is to use Screen Sharing.",
       variant: "destructive",
       duration: 8000,
     });
@@ -53,7 +57,7 @@ export default function VideoPlayer({
     }
 
     if (screenStream) {
-      return <video ref={videoRef} className="w-full h-full" autoPlay muted playsInline />;
+      return <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline />;
     }
 
     if (videoSource && !urlError) {
@@ -79,27 +83,23 @@ export default function VideoPlayer({
         </>
       );
     }
+    
+    // Default placeholder states
+    let Icon = Film;
+    let title = "No Video Loaded";
+    let description = 'Use the "Set Video" or "Share Screen" buttons to start.';
+
+    if (urlError) {
+      Icon = AlertTriangle;
+      title = "Video Playback Error";
+      description = "The provider is blocking playback here. Try using the 'Share Screen' feature instead.";
+    }
 
     return (
       <div className="w-full h-full flex flex-col items-center justify-center text-center text-muted-foreground bg-black/50 p-4">
-        {urlError ? (
-             <>
-                <AlertTriangle className="h-16 w-16 mb-4 text-destructive" />
-                <h2 className="text-2xl font-bold">Video Playback Error</h2>
-                <p className="text-lg max-w-xl">
-                    The video provider is blocking playback on other websites (CORS policy).
-                </p>
-                <p className="text-md text-muted-foreground mt-2 max-w-2xl">
-                    Browser extensions to bypass this often don&apos;t work for embedded media players. The most reliable solution is to use the <strong>Share Screen</strong> feature to stream the video from your computer to the room.
-                </p>
-             </>
-        ) : (
-            <>
-                <Film className="h-16 w-16 mb-4" />
-                <h2 className="text-2xl font-bold">No Video Loaded</h2>
-                <p className="text-lg">Use the "Set Video" or "Share Screen" buttons to start.</p>
-            </>
-        )}
+        <Icon className={`h-16 w-16 mb-4 ${urlError ? 'text-destructive' : ''}`} />
+        <h2 className="text-2xl font-bold">{title}</h2>
+        <p className="text-lg max-w-xl">{description}</p>
       </div>
     );
   };

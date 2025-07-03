@@ -3,7 +3,7 @@
 
 import { recommendContent, type RecommendContentInput } from "@/ai/flows/recommend-content";
 import { processVideoUrl, type ProcessVideoUrlInput } from "@/ai/flows/process-video-url";
-import { collection, deleteDoc, doc, getDocs, getDoc, setDoc, serverTimestamp, query } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, getDoc, setDoc, serverTimestamp, query, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface FormInput {
@@ -83,9 +83,11 @@ export async function getSessionDetails(sessionId: string) {
         if (!sessionSnap.exists()) {
             return { data: null, error: "Room not found." };
         }
+        
+        const sessionData = sessionSnap.data();
+        const hasPassword = !!sessionData?.password;
 
-        const hasPassword = !!sessionSnap.data()?.password;
-        return { data: { hasPassword }, error: null };
+        return { data: { hasPassword, broadcasterId: sessionData?.broadcasterId || null }, error: null };
 
     } catch (error) {
         console.error("Failed to get session details:", error);
@@ -151,13 +153,15 @@ export async function deleteRoom(sessionId: string, password?: string) {
             }
         }
         
-        const participantsRef = collection(sessionRef, 'participants');
-        const participantsSnapshot = await getDocs(participantsRef);
-        await Promise.all(participantsSnapshot.docs.map(d => deleteDoc(d.ref)));
-
-        const messagesRef = collection(sessionRef, 'messages');
-        const messagesSnapshot = await getDocs(messagesRef);
-        await Promise.all(messagesSnapshot.docs.map(d => deleteDoc(d.ref)));
+        // Delete all subcollections
+        const subcollections = ['participants', 'messages', 'offers', 'answers', 'iceCandidates'];
+        for (const collName of subcollections) {
+            const collRef = collection(sessionRef, collName);
+            const snapshot = await getDocs(collRef);
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        }
 
         await deleteDoc(sessionRef);
 
@@ -187,5 +191,32 @@ export async function getSessionPassword(sessionId: string) {
     } catch (error) {
         console.error("Failed to get session password:", error);
         return { data: null, error: "Could not retrieve room password." };
+    }
+}
+
+export async function setBroadcaster(sessionId: string, userId: string | null) {
+    try {
+        const sessionRef = doc(db, 'sessions', sessionId);
+
+        if (userId === null) {
+            // If stopping broadcast, clean up signaling data
+            const subcollections = ['offers', 'answers', 'iceCandidates'];
+            for (const collName of subcollections) {
+                const collRef = collection(sessionRef, collName);
+                const snapshot = await getDocs(collRef);
+                if (!snapshot.empty) {
+                    const batch = writeBatch(db);
+                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                }
+            }
+        }
+        
+        await setDoc(sessionRef, { broadcasterId: userId }, { merge: true });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to set broadcaster:", error);
+        return { error: "Failed to update broadcaster status." };
     }
 }
