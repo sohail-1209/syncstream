@@ -54,7 +54,7 @@ export default function WatchPartyPage() {
 
     // Fullscreen state
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const videoPlayerRef = useRef<HTMLDivElement>(null);
+    const pageRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const checkSession = async () => {
@@ -228,10 +228,10 @@ export default function WatchPartyPage() {
     };
 
     const toggleFullscreen = () => {
-        if (!videoPlayerRef.current) return;
+        if (!pageRef.current) return;
 
         if (!document.fullscreenElement) {
-            videoPlayerRef.current.requestFullscreen().catch(err => {
+            pageRef.current.requestFullscreen().catch(err => {
                 toast({
                     variant: 'destructive',
                     title: 'Fullscreen Error',
@@ -305,7 +305,7 @@ export default function WatchPartyPage() {
     const amSharing = activeSharer === localUser?.id;
 
     return (
-        <div className="flex flex-col h-screen bg-background text-foreground">
+        <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
             <header className="flex items-center justify-between px-4 py-2 border-b">
                 <Link href="/" className="flex items-center gap-2">
                     <Logo className="h-8 w-8 text-primary" />
@@ -436,7 +436,7 @@ export default function WatchPartyPage() {
                 </div>
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
-                <div ref={videoPlayerRef} className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
+                <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
                    {activeSharer && livekitToken ? (
                         <LiveKitStage token={livekitToken} roomName={params.sessionId} sharerId={activeSharer}/>
                    ) : (
