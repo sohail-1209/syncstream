@@ -92,7 +92,7 @@ export default function LiveKitStage({ token, roomName, sharerId }: { token: str
                 onError={(error) => {
                     // This specific error is benign and happens on fast re-renders/unmounts in React's strict mode.
                     // We can safely ignore it to keep the console clean.
-                    if (error.message?.toLowerCase().includes('cannot send signal request before connected')) {
+                    if (String(error).toLowerCase().includes('cannot send signal request before connected')) {
                         console.log('Ignoring benign LiveKit disconnect error.');
                         return;
                     }
