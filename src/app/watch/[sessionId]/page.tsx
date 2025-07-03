@@ -281,13 +281,10 @@ function WatchPartyContent({
                         <span className="sr-only">{isTogglingShare ? "Loading..." : amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
                     </Button>
                     
-                    {activeSharer && (
-                         <Button variant="outline" size="icon" onClick={handleToggleMic}>
-                            {isMicMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                            <span className="sr-only">{isMicMuted ? "Unmute" : "Mute"}</span>
-                        </Button>
-                    )}
-
+                    <Button variant="outline" size="icon" onClick={handleToggleMic}>
+                        {isMicMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                        <span className="sr-only">{isMicMuted ? "Unmute" : "Mute"}</span>
+                    </Button>
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
                         <PopoverTrigger asChild>
