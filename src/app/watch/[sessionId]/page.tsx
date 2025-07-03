@@ -10,7 +10,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -22,6 +22,7 @@ import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc } from "fi
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import LiveKitStage from "@/components/watch-party/livekit-stage";
+import { cn } from "@/lib/utils";
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
 
@@ -52,8 +53,9 @@ export default function WatchPartyPage() {
     const [livekitToken, setLivekitToken] = useState<string>('');
     const [isTogglingShare, startShareToggleTransition] = useTransition();
 
-    // Fullscreen state
+    // UI State
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const pageRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -429,13 +431,22 @@ export default function WatchPartyPage() {
                             </div>
                         </PopoverContent>
                     </Popover>
+                    <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden md:inline-flex">
+                        {isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                        <span className="sr-only">Toggle Sidebar</span>
+                    </Button>
                     <Button variant="outline" onClick={handleExitRoom}>
                         <LogOut className="h-4 w-4 mr-2" />
                         Exit
                     </Button>
                 </div>
             </header>
-            <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4">
+            <main className={cn(
+                "flex-1 flex flex-col md:grid gap-4 p-4",
+                isSidebarOpen
+                    ? "md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px]"
+                    : "md:grid-cols-1"
+            )}>
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
                    {activeSharer && livekitToken ? (
                         <LiveKitStage token={livekitToken} roomName={params.sessionId} sharerId={activeSharer}/>
@@ -443,10 +454,15 @@ export default function WatchPartyPage() {
                         <VideoPlayer videoSource={videoSource} />
                    )}
                 </div>
-                <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
+                <div className={cn(
+                    "md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0",
+                    !isSidebarOpen && "hidden"
+                )}>
                     <Sidebar sessionId={params.sessionId} user={localUser} />
                 </div>
             </main>
         </div>
     );
 }
+
+    
