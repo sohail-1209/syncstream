@@ -32,7 +32,7 @@ export default function VideoPlayer({
 }) {
   const { toast } = useToast();
   const playerRef = useRef<ReactPlayer>(null);
-  const programmaticSeekRef = useRef(false);
+  const isSeekingFromSync = useRef(false);
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -76,19 +76,19 @@ export default function VideoPlayer({
 
     // Sync seek time, with a tolerance to prevent seeking on minor differences
     const localTime = playerRef.current.getCurrentTime() || 0;
-    if (Math.abs(localTime - playbackState.seekTime) > 2) { 
-        programmaticSeekRef.current = true;
+    if (Math.abs(localTime - playbackState.seekTime) > 1.5) { 
+        isSeekingFromSync.current = true;
         playerRef.current.seekTo(playbackState.seekTime, 'seconds');
     }
 
-  }, [playbackState, isReady, user]);
+  }, [playbackState, isReady, user, localIsPlaying]);
 
 
   const handleReady = useCallback(() => {
     setIsReady(true);
     // When a new video is loaded, seek to the last known position
     if (playbackState && playerRef.current) {
-        programmaticSeekRef.current = true;
+        isSeekingFromSync.current = true;
         playerRef.current.seekTo(playbackState.seekTime, 'seconds');
         setLocalIsPlaying(playbackState.isPlaying);
     }
@@ -109,12 +109,23 @@ export default function VideoPlayer({
   }, [localIsPlaying, onPlaybackChange]);
 
   const handleSeek = useCallback((seconds: number) => {
-    if (programmaticSeekRef.current) {
-        programmaticSeekRef.current = false;
+    if (isSeekingFromSync.current) {
+        // This seek was triggered by a sync event, so we ignore it to prevent loops
+        // and reset the flag.
+        isSeekingFromSync.current = false;
         return;
     }
+    // This was a user-initiated seek, so we propagate it.
     onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
   }, [localIsPlaying, onPlaybackChange]);
+  
+  const handleProgress = useCallback(() => {
+    // This is a failsafe to ensure the flag is reset after a programmatic seek,
+    // as `onProgress` is called frequently. Sometimes `onSeek` may not fire for certain programmatic seeks.
+    if (isSeekingFromSync.current) {
+      isSeekingFromSync.current = false;
+    }
+  }, []);
   
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -207,6 +218,7 @@ export default function VideoPlayer({
               onPlay={handlePlay}
               onPause={handlePause}
               onSeek={handleSeek}
+              onProgress={handleProgress}
               onError={handleUrlError}
               config={{
                 file: {
