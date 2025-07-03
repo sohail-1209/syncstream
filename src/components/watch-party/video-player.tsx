@@ -10,6 +10,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import ReactPlayer from 'react-player';
 import type { LocalUser } from "@/hooks/use-local-user";
+import { type OnProgressProps } from "react-player/base";
 
 type PlaybackState = {
   isPlaying: boolean;
@@ -31,7 +32,7 @@ export default function VideoPlayer({
 }) {
   const { toast } = useToast();
   const playerRef = useRef<ReactPlayer>(null);
-  const isSeekingFromSync = useRef(false);
+  const syncState = useRef<{ isSeeking: boolean, seekTo: number | null }>({ isSeeking: false, seekTo: null });
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -46,16 +47,15 @@ export default function VideoPlayer({
   }, []);
 
   useEffect(() => {
-    // When video source changes, reset states
     setUrlError(false);
     setIsReady(false);
+    syncState.current = { isSeeking: false, seekTo: null };
     if (playbackState) {
         setLocalIsPlaying(playbackState.isPlaying);
     } else {
         setLocalIsPlaying(false);
     }
-  }, [videoSource]);
-
+  }, [videoSource, playbackState]);
 
   // Sync remote state to local player
   useEffect(() => {
@@ -63,23 +63,22 @@ export default function VideoPlayer({
         return;
     }
 
-    // If the state was updated by the current user, ignore it to prevent loops
     if (playbackState.updatedBy === user.id) {
         return;
     }
     
-    // Sync playing status
     if (localIsPlaying !== playbackState.isPlaying) {
         setLocalIsPlaying(playbackState.isPlaying);
     }
 
-    // Sync seek time, with a tolerance to prevent seeking on minor differences
     const localTime = playerRef.current.getCurrentTime() || 0;
     const remoteTime = typeof playbackState.seekTime === 'number' ? playbackState.seekTime : 0;
     
     if (Math.abs(localTime - remoteTime) > 1.5) { 
-        isSeekingFromSync.current = true;
-        playerRef.current.seekTo(remoteTime, 'seconds');
+        if (!syncState.current.isSeeking) {
+            syncState.current = { isSeeking: true, seekTo: remoteTime };
+            playerRef.current.seekTo(remoteTime, 'seconds');
+        }
     }
 
   }, [playbackState, isReady, user, localIsPlaying]);
@@ -87,9 +86,8 @@ export default function VideoPlayer({
 
   const handleReady = useCallback(() => {
     setIsReady(true);
-    // When a new video is loaded, seek to the last known position
     if (playbackState && playerRef.current) {
-        isSeekingFromSync.current = true;
+        syncState.current = { isSeeking: true, seekTo: playbackState.seekTime };
         playerRef.current.seekTo(playbackState.seekTime, 'seconds');
         setLocalIsPlaying(playbackState.isPlaying);
     }
@@ -114,8 +112,7 @@ export default function VideoPlayer({
   }, [localIsPlaying, onPlaybackChange, user?.id]);
 
   const handleSeek = useCallback((seconds: number) => {
-    if (isSeekingFromSync.current) {
-        isSeekingFromSync.current = false;
+    if (syncState.current.isSeeking) {
         return;
     }
     if (user?.id) {
@@ -123,6 +120,14 @@ export default function VideoPlayer({
     }
   }, [localIsPlaying, onPlaybackChange, user?.id]);
   
+  const handleProgress = useCallback((progress: OnProgressProps) => {
+    if (syncState.current.isSeeking && syncState.current.seekTo !== null) {
+      if (Math.abs(progress.playedSeconds - syncState.current.seekTo) < 0.5) {
+        syncState.current = { isSeeking: false, seekTo: null };
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
         if (document.fullscreenElement === placeholderRef.current) {
@@ -199,7 +204,7 @@ export default function VideoPlayer({
   
   return (
     <Card className="w-full h-full bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
-      <div className="relative flex-1 bg-black group aspect-video md:aspect-auto">
+      <div className="relative flex-1 bg-black group">
         {isMounted && videoSource && !urlError ? (
           <>
             <ReactPlayer
@@ -214,6 +219,7 @@ export default function VideoPlayer({
               onPlay={handlePlay}
               onPause={handlePause}
               onSeek={handleSeek}
+              onProgress={handleProgress}
               onError={handleUrlError}
               config={{
                 file: {
