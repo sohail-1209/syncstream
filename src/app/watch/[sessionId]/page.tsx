@@ -18,7 +18,7 @@ import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPas
 import { Badge } from "@/components/ui/badge";
 import { useLocalUser, type LocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc, type Timestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc, type Timestamp, query, orderBy, limit } from "firebase/firestore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import LiveKitStage from "@/components/watch-party/livekit-stage";
@@ -68,6 +68,8 @@ function WatchPartyContent({
 
     const [activeSharer, setActiveSharer] = useState<string | null>(initialActiveSharer);
     const [isTogglingShare, startShareToggleTransition] = useTransition();
+    
+    const [hostId, setHostId] = useState<string | null>(null);
 
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -77,6 +79,7 @@ function WatchPartyContent({
     const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
     const isMicMuted = !isMicrophoneEnabled;
     const amSharing = activeSharer === user?.id;
+    const isHost = user?.id === hostId;
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -123,6 +126,24 @@ function WatchPartyContent({
                 setPlaybackState(remotePlaybackState);
             }
         });
+        return () => unsub();
+    }, [sessionId]);
+
+    // Determine the host by finding the participant who has been in the room the longest
+    useEffect(() => {
+        if (!sessionId) return;
+        const participantsRef = collection(db, 'sessions', sessionId, 'participants');
+        const q = query(participantsRef, orderBy('lastSeen', 'asc'), limit(1));
+
+        const unsub = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                const hostDoc = snapshot.docs[0];
+                setHostId(hostDoc.id);
+            } else {
+                setHostId(null);
+            }
+        });
+
         return () => unsub();
     }, [sessionId]);
     
@@ -238,9 +259,9 @@ function WatchPartyContent({
     };
 
     const handlePlaybackChange = useCallback(async (newState: { isPlaying: boolean; seekTime: number }) => {
-        if (!user) return;
+        if (!user || !isHost) return;
         await updatePlaybackState(sessionId, user.id, newState);
-    }, [user, sessionId]);
+    }, [user, sessionId, isHost]);
 
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
@@ -317,7 +338,7 @@ function WatchPartyContent({
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
                         <PopoverTrigger asChild>
-                             <Button variant="outline" size="icon" disabled={!!activeSharer}>
+                             <Button variant="outline" size="icon" disabled={!!activeSharer || !isHost}>
                                 <LinkIcon className="h-4 w-4" />
                                 <span className="sr-only">Set Video</span>
                             </Button>
@@ -399,6 +420,7 @@ function WatchPartyContent({
                             playbackState={playbackState}
                             onPlaybackChange={handlePlaybackChange}
                             user={user}
+                            isHost={isHost}
                         />
                    )}
                 </div>
@@ -579,5 +601,7 @@ export default function WatchPartyPage() {
         </div>
     );
 }
+
+    
 
     

@@ -23,12 +23,14 @@ export default function VideoPlayer({
   videoSource,
   playbackState,
   onPlaybackChange,
-  user
+  user,
+  isHost
 }: { 
   videoSource: ProcessVideoUrlOutput | null;
   playbackState: PlaybackState;
   onPlaybackChange: (newState: { isPlaying: boolean, seekTime: number }) => void;
   user: LocalUser | null;
+  isHost: boolean;
 }) {
   const { toast } = useToast();
   const playerRef = useRef<ReactPlayer>(null);
@@ -55,7 +57,7 @@ export default function VideoPlayer({
     } else {
         setLocalIsPlaying(false);
     }
-  }, [videoSource, playbackState]);
+  }, [videoSource]);
 
   // Sync remote state to local player
   useEffect(() => {
@@ -74,6 +76,7 @@ export default function VideoPlayer({
     const localTime = playerRef.current.getCurrentTime() || 0;
     const remoteTime = typeof playbackState.seekTime === 'number' ? playbackState.seekTime : 0;
     
+    // Generous threshold to prevent sync-fights during normal playback
     if (Math.abs(localTime - remoteTime) > 1.5) { 
         if (!syncState.current.isSeeking) {
             syncState.current = { isSeeking: true, seekTo: remoteTime };
@@ -94,31 +97,34 @@ export default function VideoPlayer({
   }, [playbackState]);
 
   const handlePlay = useCallback(() => {
+    if (!isHost) return;
     if (!localIsPlaying) {
       setLocalIsPlaying(true);
       if (user?.id) {
         onPlaybackChange({ isPlaying: true, seekTime: playerRef.current?.getCurrentTime() || 0 });
       }
     }
-  }, [localIsPlaying, onPlaybackChange, user?.id]);
+  }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
 
   const handlePause = useCallback(() => {
+    if (!isHost) return;
     if (localIsPlaying) {
       setLocalIsPlaying(false);
       if (user?.id) {
         onPlaybackChange({ isPlaying: false, seekTime: playerRef.current?.getCurrentTime() || 0 });
       }
     }
-  }, [localIsPlaying, onPlaybackChange, user?.id]);
+  }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
 
   const handleSeek = useCallback((seconds: number) => {
+    if (!isHost) return;
     if (syncState.current.isSeeking) {
         return;
     }
     if (user?.id) {
         onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
     }
-  }, [localIsPlaying, onPlaybackChange, user?.id]);
+  }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
   
   const handleProgress = useCallback((progress: OnProgressProps) => {
     if (syncState.current.isSeeking && syncState.current.seekTo !== null) {
@@ -212,7 +218,7 @@ export default function VideoPlayer({
               key={videoSource.correctedUrl}
               url={videoSource.correctedUrl}
               playing={localIsPlaying}
-              controls
+              controls={isHost}
               width="100%"
               height="100%"
               onReady={handleReady}
@@ -238,3 +244,5 @@ export default function VideoPlayer({
     </Card>
   );
 }
+
+    
