@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
@@ -364,16 +365,16 @@ export default function WatchPartyPage() {
                         </Button>
                     </RecommendationsModal>
 
-                     <Button variant="outline" onClick={handleShareScreen} disabled={(activeSharer !== null && !amSharing) || isTogglingShare}>
-                        {amSharing ? <VideoOff className="h-4 w-4 mr-2" /> : <ScreenShare className="h-4 w-4 mr-2" />}
-                        {isTogglingShare ? "..." : amSharing ? 'Stop Sharing' : 'Share Screen'}
+                    <Button variant="outline" size="icon" onClick={handleShareScreen} disabled={(activeSharer !== null && !amSharing) || isTogglingShare}>
+                        {isTogglingShare ? <Loader2 className="h-4 w-4 animate-spin" /> : (amSharing ? <VideoOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />)}
+                        <span className="sr-only">{isTogglingShare ? "Loading..." : amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
                     </Button>
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
                         <PopoverTrigger asChild>
-                             <Button variant="outline" disabled={!!activeSharer}>
-                                <LinkIcon className="h-4 w-4 mr-2" />
-                                Set Video
+                             <Button variant="outline" size="icon" disabled={!!activeSharer}>
+                                <LinkIcon className="h-4 w-4" />
+                                <span className="sr-only">Set Video</span>
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-80">
