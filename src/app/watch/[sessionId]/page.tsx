@@ -18,7 +18,7 @@ import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPas
 import { Badge } from "@/components/ui/badge";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -121,6 +121,12 @@ export default function WatchPartyPage() {
     useEffect(() => {
         if (authStatus !== 'authenticated' || !localUser) return;
     
+        // NEW: Check for stale broadcast on refresh
+        if (localUser.id === broadcasterId && !localScreenStream && !isStartingShare.current) {
+            setBroadcaster(params.sessionId, null);
+            return; // Exit early, the effect will re-run when broadcasterId changes
+        }
+
         const cleanupConnections = () => {
             Object.values(peerConnections.current).forEach(pc => pc.close());
             peerConnections.current = {};
@@ -155,12 +161,16 @@ export default function WatchPartyPage() {
                         const viewerId = change.doc.id;
                         const offer = change.doc.data();
 
-                        if (peerConnections.current[viewerId]) return;
+                        if (peerConnections.current[viewerId]) {
+                             peerConnections.current[viewerId].close();
+                        }
 
                         const pc = new RTCPeerConnection(rtcConfig);
                         peerConnections.current[viewerId] = pc;
 
-                        localScreenStream?.getTracks().forEach(track => pc.addTrack(track, localScreenStream));
+                        localScreenStream?.getTracks().forEach(track => {
+                             if(localScreenStream) pc.addTrack(track, localScreenStream);
+                        });
 
                         pc.onicecandidate = e => {
                             if (e.candidate) {
@@ -171,24 +181,25 @@ export default function WatchPartyPage() {
                         await pc.setRemoteDescription(new RTCSessionDescription(offer));
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
-                        await setDoc(doc(db, `sessions/${params.sessionId}/answers`, viewerId), { from: localUser.id, answer: answer });
+                        await setDoc(doc(db, `sessions/${params.sessionId}/answers`, viewerId), { from: localUser.id, answer: answer.toJSON() });
+                        
+                        await deleteDoc(change.doc.ref);
                     }
                 });
             });
             unsubscribers.push(unsubOffers);
 
             // Listen for ICE candidates from all viewers and route them
-            const candidatesRef = collection(db, `sessions/${params.sessionId}/iceCandidates`);
-            const unsubCandidates = onSnapshot(candidatesRef, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
+            const candidatesQuery = query(collection(db, `sessions/${params.sessionId}/iceCandidates`), where("to", "==", localUser.id));
+            const unsubCandidates = onSnapshot(candidatesQuery, (snapshot) => {
+                snapshot.docChanges().forEach(async (change) => {
                     if (change.type === 'added') {
                         const data = change.doc.data();
-                        if (data.to === localUser.id) { // Candidate is for me, the broadcaster
-                            const pc = peerConnections.current[data.from]; // from viewerId
-                            if (pc) {
-                                pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-                            }
+                        const pc = peerConnections.current[data.from]; // from viewerId
+                        if (pc) {
+                            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                         }
+                        await deleteDoc(change.doc.ref);
                     }
                 });
             });
@@ -196,7 +207,6 @@ export default function WatchPartyPage() {
 
             return () => {
                 unsubscribers.forEach(unsub => unsub());
-                cleanupConnections();
             }
         } 
         // Role: Viewer
@@ -210,10 +220,14 @@ export default function WatchPartyPage() {
                 }
             };
             
-            const unsubCandidates = onSnapshot(collection(db, `sessions/${params.sessionId}/iceCandidates`), (snap) => {
-                snap.docChanges().forEach(c => {
-                    if (c.type === 'added' && c.doc.data().to === localUser.id && c.doc.data().from === broadcasterId) {
-                        pc.addIceCandidate(new RTCIceCandidate(c.doc.data().candidate));
+            const candidatesQuery = query(collection(db, `sessions/${params.sessionId}/iceCandidates`), where("to", "==", localUser.id), where("from", "==", broadcasterId));
+            const unsubCandidates = onSnapshot(candidatesQuery, (snap) => {
+                snap.docChanges().forEach(async c => {
+                    if (c.type === 'added') {
+                        if (pc.remoteDescription) {
+                            await pc.addIceCandidate(new RTCIceCandidate(c.doc.data().candidate));
+                        }
+                        await deleteDoc(c.doc.ref);
                     }
                 });
             });
@@ -223,13 +237,15 @@ export default function WatchPartyPage() {
             const createOffer = async () => {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
-                await setDoc(doc(db, `sessions/${params.sessionId}/offers`, localUser.id), offer);
+                await setDoc(doc(db, `sessions/${params.sessionId}/offers`, localUser.id), offer.toJSON());
             };
             createOffer();
     
-            const unsubAnswer = onSnapshot(doc(db, `sessions/${params.sessionId}/answers`, localUser.id), async (doc) => {
-                if (doc.exists() && doc.data().from === broadcasterId && !pc.currentRemoteDescription) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(doc.data().answer));
+            const answerRef = doc(db, `sessions/${params.sessionId}/answers`, localUser.id);
+            const unsubAnswer = onSnapshot(answerRef, async (docSnap) => {
+                if (docSnap.exists() && docSnap.data().from === broadcasterId && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(docSnap.data().answer));
+                    await deleteDoc(docSnap.ref);
                 }
             });
 
@@ -529,7 +545,7 @@ export default function WatchPartyPage() {
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
-                    <VideoPlayer videoSource={isSharing ? null : videoSource} screenStream={screenStream} />
+                    <VideoPlayer key={broadcasterId} videoSource={isSharing ? null : videoSource} screenStream={screenStream} />
                 </div>
                 <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
                     <Sidebar sessionId={params.sessionId} user={localUser} />
@@ -538,3 +554,5 @@ export default function WatchPartyPage() {
         </div>
     );
 }
+
+    
