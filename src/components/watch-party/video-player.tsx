@@ -2,10 +2,11 @@
 'use client';
 
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import EmojiBar from "./emoji-bar";
-import { Film, AlertTriangle } from "lucide-react";
+import { Film, AlertTriangle, Maximize, Minimize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import ReactPlayer from 'react-player';
 
@@ -17,15 +18,28 @@ export default function VideoPlayer({
   const { toast } = useToast();
   const [urlError, setUrlError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isPlaceholderFullscreen, setIsPlaceholderFullscreen] = useState(false);
+  const placeholderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Reset error state when a new URL source is provided
   useEffect(() => {
     setUrlError(false);
   }, [videoSource]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+        if (document.fullscreenElement === placeholderRef.current) {
+            setIsPlaceholderFullscreen(true);
+        } else if (isPlaceholderFullscreen) {
+            setIsPlaceholderFullscreen(false);
+        }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [isPlaceholderFullscreen]);
 
   const handleUrlError = () => {
     setUrlError(true);
@@ -36,6 +50,23 @@ export default function VideoPlayer({
       variant: "destructive",
       duration: 8000,
     });
+  };
+
+  const togglePlaceholderFullscreen = () => {
+      if (!placeholderRef.current) return;
+      if (!document.fullscreenElement) {
+          placeholderRef.current.requestFullscreen().catch(err => {
+              toast({
+                  variant: 'destructive',
+                  title: 'Fullscreen Error',
+                  description: `Could not enter fullscreen mode: ${err.message}`
+              });
+          });
+      } else {
+          if (document.exitFullscreen) {
+              document.exitFullscreen();
+          }
+      }
   };
 
   const renderPlaceholder = () => {
@@ -50,7 +81,17 @@ export default function VideoPlayer({
     }
 
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center text-center text-muted-foreground bg-black/50 p-4">
+      <div ref={placeholderRef} className="relative w-full h-full flex flex-col items-center justify-center text-center text-muted-foreground bg-black/50 p-4">
+        <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 h-10 w-10 text-white hover:text-white hover:bg-white/10 z-10"
+            onClick={togglePlaceholderFullscreen}
+            aria-label={isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
+        >
+            {isPlaceholderFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+            <span className="sr-only">{isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
+        </Button>
         <Icon className={`h-16 w-16 mb-4 ${urlError ? 'text-destructive' : ''}`} />
         <h2 className="text-2xl font-bold">{title}</h2>
         <p className="text-lg max-w-xl">{description}</p>
