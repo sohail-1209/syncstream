@@ -138,6 +138,8 @@ export default function WatchPartyPage() {
             }
             return;
         }
+
+        const unsubscribers: (() => void)[] = [];
     
         // Role: Broadcaster
         if (localUser.id === broadcasterId) {
@@ -145,28 +147,27 @@ export default function WatchPartyPage() {
                 isStartingShare.current = false;
             }
 
+            // Listen for offers from new viewers
             const offersRef = collection(db, `sessions/${params.sessionId}/offers`);
             const unsubOffers = onSnapshot(offersRef, (snapshot) => {
                 snapshot.docChanges().forEach(async (change) => {
                     if (change.type === 'added') {
                         const viewerId = change.doc.id;
                         const offer = change.doc.data();
-                        
+
+                        if (peerConnections.current[viewerId]) return;
+
                         const pc = new RTCPeerConnection(rtcConfig);
                         peerConnections.current[viewerId] = pc;
-    
+
                         localScreenStream?.getTracks().forEach(track => pc.addTrack(track, localScreenStream));
-    
-                        pc.onicecandidate = e => e.candidate && addDoc(collection(db, `sessions/${params.sessionId}/iceCandidates`), { from: localUser.id, to: viewerId, candidate: e.candidate.toJSON() });
+
+                        pc.onicecandidate = e => {
+                            if (e.candidate) {
+                                addDoc(collection(db, `sessions/${params.sessionId}/iceCandidates`), { from: localUser.id, to: viewerId, candidate: e.candidate.toJSON() });
+                            }
+                        };
                         
-                        const unsubCandidates = onSnapshot(collection(db, `sessions/${params.sessionId}/iceCandidates`), (snap) => {
-                            snap.docChanges().forEach(c => {
-                                if (c.type === 'added' && c.doc.data().to === localUser.id && c.doc.data().from === viewerId) {
-                                    pc.addIceCandidate(new RTCIceCandidate(c.doc.data().candidate));
-                                }
-                            });
-                        });
-    
                         await pc.setRemoteDescription(new RTCSessionDescription(offer));
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
@@ -174,8 +175,27 @@ export default function WatchPartyPage() {
                     }
                 });
             });
+            unsubscribers.push(unsubOffers);
+
+            // Listen for ICE candidates from all viewers and route them
+            const candidatesRef = collection(db, `sessions/${params.sessionId}/iceCandidates`);
+            const unsubCandidates = onSnapshot(candidatesRef, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') {
+                        const data = change.doc.data();
+                        if (data.to === localUser.id) { // Candidate is for me, the broadcaster
+                            const pc = peerConnections.current[data.from]; // from viewerId
+                            if (pc) {
+                                pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                            }
+                        }
+                    }
+                });
+            });
+            unsubscribers.push(unsubCandidates);
+
             return () => {
-                unsubOffers();
+                unsubscribers.forEach(unsub => unsub());
                 cleanupConnections();
             }
         } 
@@ -184,7 +204,11 @@ export default function WatchPartyPage() {
             const pc = new RTCPeerConnection(rtcConfig);
             peerConnections.current[broadcasterId] = pc;
     
-            pc.onicecandidate = e => e.candidate && addDoc(collection(db, `sessions/${params.sessionId}/iceCandidates`), { from: localUser.id, to: broadcasterId, candidate: e.candidate.toJSON() });
+            pc.onicecandidate = e => {
+                if(e.candidate) {
+                    addDoc(collection(db, `sessions/${params.sessionId}/iceCandidates`), { from: localUser.id, to: broadcasterId, candidate: e.candidate.toJSON() })
+                }
+            };
             
             const unsubCandidates = onSnapshot(collection(db, `sessions/${params.sessionId}/iceCandidates`), (snap) => {
                 snap.docChanges().forEach(c => {
@@ -204,7 +228,7 @@ export default function WatchPartyPage() {
             createOffer();
     
             const unsubAnswer = onSnapshot(doc(db, `sessions/${params.sessionId}/answers`, localUser.id), async (doc) => {
-                if (doc.exists() && doc.data().from === broadcasterId) {
+                if (doc.exists() && doc.data().from === broadcasterId && !pc.currentRemoteDescription) {
                     await pc.setRemoteDescription(new RTCSessionDescription(doc.data().answer));
                 }
             });

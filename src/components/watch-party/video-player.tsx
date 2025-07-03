@@ -3,7 +3,7 @@
 
 import { Card } from "@/components/ui/card";
 import EmojiBar from "./emoji-bar";
-import { Film, AlertTriangle, ScreenShare } from "lucide-react";
+import { Film, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useRef } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -27,7 +27,7 @@ export default function VideoPlayer({
   
   useEffect(() => {
     if (videoRef.current) {
-      videoRef.current.srcObject = screenStream;
+        videoRef.current.srcObject = screenStream;
     }
   }, [screenStream]);
 
@@ -47,40 +47,7 @@ export default function VideoPlayer({
     });
   };
 
-  const renderContent = () => {
-    if (!isMounted) {
-      return null;
-    }
-
-    if (screenStream) {
-      return <video key={screenStream.id} ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline />;
-    }
-
-    if (videoSource && !urlError) {
-      return (
-        <>
-          <ReactPlayer
-            key={videoSource.correctedUrl}
-            url={videoSource.correctedUrl}
-            playing
-            controls
-            width="100%"
-            height="100%"
-            onError={handleUrlError}
-            config={{
-              file: {
-                attributes: {
-                  crossOrigin: 'anonymous'
-                }
-              }
-            }}
-          />
-          {!screenStream && <EmojiBar />}
-        </>
-      );
-    }
-    
-    // Default placeholder states
+  const renderPlaceholder = () => {
     let Icon = Film;
     let title = "No Video Loaded";
     let description = 'Use the "Set Video" or "Share Screen" buttons to start.';
@@ -98,12 +65,46 @@ export default function VideoPlayer({
         <p className="text-lg max-w-xl">{description}</p>
       </div>
     );
-  };
+  }
   
   return (
     <Card className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
       <div className="relative flex-1 bg-black group">
-        {renderContent()}
+        {/* Always render the video tag for WebRTC */}
+        <video 
+          ref={videoRef} 
+          className={`w-full h-full object-contain ${screenStream ? '' : 'hidden'}`} 
+          autoPlay 
+          muted 
+          playsInline 
+        />
+        
+        {/* Render ReactPlayer for URL sources, if not screen sharing */}
+        {isMounted && !screenStream && videoSource && !urlError && (
+          <>
+            <ReactPlayer
+              key={videoSource.correctedUrl}
+              url={videoSource.correctedUrl}
+              playing
+              controls
+              width="100%"
+              height="100%"
+              onError={handleUrlError}
+              config={{
+                file: {
+                  attributes: {
+                    crossOrigin: 'anonymous'
+                  }
+                }
+              }}
+            />
+            <EmojiBar />
+          </>
+        )}
+
+        {/* Render placeholder if no content is active */}
+        {!screenStream && !videoSource && renderPlaceholder()}
+        {urlError && renderPlaceholder()}
       </div>
     </Card>
   );
