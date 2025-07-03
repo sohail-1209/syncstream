@@ -89,12 +89,18 @@ export async function getSessionDetails(sessionId: string) {
         const sessionData = sessionSnap.data();
         const hasPassword = !!sessionData?.password;
 
-        let playbackState = sessionData?.playbackState || null;
-        if (playbackState && playbackState.updatedAt && typeof playbackState.updatedAt.toMillis === 'function') {
+        let playbackState = null;
+        const remotePlaybackData = sessionData?.playbackState;
+
+        if (remotePlaybackData && remotePlaybackData.updatedAt && typeof remotePlaybackData.updatedAt.toMillis === 'function') {
             playbackState = {
-                ...playbackState,
-                updatedAt: playbackState.updatedAt.toMillis()
+                isPlaying: remotePlaybackData.isPlaying,
+                seekTime: remotePlaybackData.seekTime,
+                updatedBy: remotePlaybackData.updatedBy,
+                updatedAt: remotePlaybackData.updatedAt.toMillis()
             };
+        } else if (remotePlaybackData) {
+            playbackState = remotePlaybackData;
         }
 
         return { 

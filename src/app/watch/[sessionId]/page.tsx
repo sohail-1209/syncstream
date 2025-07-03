@@ -100,7 +100,6 @@ function WatchPartyContent({
         const userRef = doc(collection(sessionRef, "participants"), user.id);
 
         const setPresence = async () => {
-             await setDoc(sessionRef, { updatedAt: serverTimestamp() }, { merge: true });
              await setDoc(userRef, { ...user, lastSeen: serverTimestamp() }, { merge: true });
         }
         
@@ -125,14 +124,16 @@ function WatchPartyContent({
             setActiveSharer(data?.activeSharer ?? null);
             setVideoSource(data?.videoSource ?? null);
             
-            const remotePlaybackState = data?.playbackState || null;
-            if (remotePlaybackState && remotePlaybackState.updatedAt && typeof remotePlaybackState.updatedAt.toMillis === 'function') {
-                 setPlaybackState({
-                     ...remotePlaybackState,
-                     updatedAt: remotePlaybackState.updatedAt.toMillis()
-                 });
+            const remotePlaybackData = data?.playbackState;
+            if (remotePlaybackData && remotePlaybackData.updatedAt && typeof remotePlaybackData.updatedAt.toMillis === 'function') {
+                setPlaybackState({
+                    isPlaying: remotePlaybackData.isPlaying,
+                    seekTime: remotePlaybackData.seekTime,
+                    updatedBy: remotePlaybackData.updatedBy,
+                    updatedAt: remotePlaybackData.updatedAt.toMillis(),
+                });
             } else {
-                setPlaybackState(remotePlaybackState);
+                setPlaybackState(remotePlaybackData || null);
             }
         });
         return () => unsub();
@@ -691,3 +692,4 @@ export default function WatchPartyPage() {
     
 
     
+
