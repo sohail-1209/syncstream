@@ -10,13 +10,12 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import ReactPlayer from 'react-player';
 import type { LocalUser } from "@/hooks/use-local-user";
-import type { Timestamp } from "firebase/firestore";
 
 type PlaybackState = {
   isPlaying: boolean;
   seekTime: number;
   updatedBy: string;
-  timestamp: Timestamp;
+  timestamp: number;
 } | null;
 
 export default function VideoPlayer({ 
@@ -55,7 +54,7 @@ export default function VideoPlayer({
     } else {
         setLocalIsPlaying(false);
     }
-  }, [videoSource, playbackState]);
+  }, [videoSource]);
 
 
   // Sync remote state to local player
@@ -76,9 +75,11 @@ export default function VideoPlayer({
 
     // Sync seek time, with a tolerance to prevent seeking on minor differences
     const localTime = playerRef.current.getCurrentTime() || 0;
-    if (Math.abs(localTime - playbackState.seekTime) > 1.5) { 
+    const remoteTime = typeof playbackState.seekTime === 'number' ? playbackState.seekTime : 0;
+    
+    if (Math.abs(localTime - remoteTime) > 1.5) { 
         isSeekingFromSync.current = true;
-        playerRef.current.seekTo(playbackState.seekTime, 'seconds');
+        playerRef.current.seekTo(remoteTime, 'seconds');
     }
 
   }, [playbackState, isReady, user, localIsPlaying]);
@@ -97,35 +98,30 @@ export default function VideoPlayer({
   const handlePlay = useCallback(() => {
     if (!localIsPlaying) {
       setLocalIsPlaying(true);
-      onPlaybackChange({ isPlaying: true, seekTime: playerRef.current?.getCurrentTime() || 0 });
+      if (user?.id) {
+        onPlaybackChange({ isPlaying: true, seekTime: playerRef.current?.getCurrentTime() || 0 });
+      }
     }
-  }, [localIsPlaying, onPlaybackChange]);
+  }, [localIsPlaying, onPlaybackChange, user?.id]);
 
   const handlePause = useCallback(() => {
     if (localIsPlaying) {
       setLocalIsPlaying(false);
-      onPlaybackChange({ isPlaying: false, seekTime: playerRef.current?.getCurrentTime() || 0 });
+      if (user?.id) {
+        onPlaybackChange({ isPlaying: false, seekTime: playerRef.current?.getCurrentTime() || 0 });
+      }
     }
-  }, [localIsPlaying, onPlaybackChange]);
+  }, [localIsPlaying, onPlaybackChange, user?.id]);
 
   const handleSeek = useCallback((seconds: number) => {
     if (isSeekingFromSync.current) {
-        // This seek was triggered by a sync event, so we ignore it to prevent loops
-        // and reset the flag.
         isSeekingFromSync.current = false;
         return;
     }
-    // This was a user-initiated seek, so we propagate it.
-    onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
-  }, [localIsPlaying, onPlaybackChange]);
-  
-  const handleProgress = useCallback(() => {
-    // This is a failsafe to ensure the flag is reset after a programmatic seek,
-    // as `onProgress` is called frequently. Sometimes `onSeek` may not fire for certain programmatic seeks.
-    if (isSeekingFromSync.current) {
-      isSeekingFromSync.current = false;
+    if (user?.id) {
+        onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
     }
-  }, []);
+  }, [localIsPlaying, onPlaybackChange, user?.id]);
   
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -203,7 +199,7 @@ export default function VideoPlayer({
   
   return (
     <Card className="w-full h-full bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
-      <div className="relative flex-1 bg-black group">
+      <div className="relative flex-1 bg-black group aspect-video md:aspect-auto">
         {isMounted && videoSource && !urlError ? (
           <>
             <ReactPlayer
@@ -218,7 +214,6 @@ export default function VideoPlayer({
               onPlay={handlePlay}
               onPause={handlePause}
               onSeek={handleSeek}
-              onProgress={handleProgress}
               onError={handleUrlError}
               config={{
                 file: {
