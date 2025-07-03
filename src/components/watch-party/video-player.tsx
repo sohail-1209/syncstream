@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card } from "@/components/ui/card";
@@ -85,7 +86,12 @@ export default function VideoPlayer({
              <>
                 <AlertTriangle className="h-16 w-16 mb-4 text-destructive" />
                 <h2 className="text-2xl font-bold">Video Playback Error</h2>
-                <p className="text-lg">Could not load video. Check the link and try again.</p>
+                <p className="text-lg max-w-xl">
+                    Could not play the video from this link. The provider might be blocking it (CORS policy).
+                </p>
+                <p className="text-md text-muted-foreground mt-2">
+                    Tip: Use the 'Share Screen' feature to play the video on your computer and stream it to the room.
+                </p>
              </>
         ) : (
             <>
