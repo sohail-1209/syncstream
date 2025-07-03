@@ -197,8 +197,8 @@ export async function getSessionPassword(sessionId: string) {
 }
 
 export async function getLiveKitToken(roomName: string, participantIdentity: string) {
-    if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET || !process.env.NEXT_PUBLIC_LIVEKIT_URL) {
-        return { data: null, error: "LiveKit server environment variables are not configured." };
+    if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
+        return { data: null, error: "LiveKit server environment variables are not configured. Please check your .env.local file." };
     }
 
     try {

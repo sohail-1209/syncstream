@@ -6,6 +6,7 @@ import { LiveKitRoom, RoomAudioRenderer, VideoConference, useRoomContext } from 
 import { useLocalUser } from '@/hooks/use-local-user';
 import { Loader2 } from 'lucide-react';
 import { RoomEvent } from 'livekit-client';
+import { useToast } from '@/hooks/use-toast';
 
 function ScreenShareManager({ sharerId }: { sharerId: string }) {
     const room = useRoomContext();
@@ -37,6 +38,7 @@ function ScreenShareManager({ sharerId }: { sharerId: string }) {
 }
 
 export default function LiveKitStage({ token, roomName, sharerId }: { token: string; roomName: string; sharerId: string }) {
+    const { toast } = useToast();
 
     if (!process.env.NEXT_PUBLIC_LIVEKIT_URL) {
         return <div className="flex items-center justify-center h-full">LiveKit URL is not configured.</div>
@@ -52,7 +54,14 @@ export default function LiveKitStage({ token, roomName, sharerId }: { token: str
                 video={false} // Default to no camera
                 data-lk-theme="default"
                 style={{ height: '100%' }}
-                onDisconnected={() => console.log('disconnected from room')}
+                onDisconnected={(reason) => {
+                    console.log('disconnected from room', reason);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Disconnected from room',
+                        description: reason?.message ?? 'The connection was lost.',
+                    });
+                }}
             >
                 <VideoConference controls={{
                     microphone: true,
