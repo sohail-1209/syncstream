@@ -62,8 +62,8 @@ function WatchPartyContent({
     const pageRef = useRef<HTMLDivElement>(null);
     
     // LiveKit state
-    const { localParticipant } = useLocalParticipant();
-    const isMicMuted = useIsMuted(Track.Source.Microphone);
+    const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+    const isMicMuted = !isMicrophoneEnabled;
     const amSharing = activeSharer === user?.id;
 
     useEffect(() => {
