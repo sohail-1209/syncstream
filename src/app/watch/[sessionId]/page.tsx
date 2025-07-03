@@ -56,6 +56,7 @@ export default function WatchPartyPage() {
     const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
     const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
     const candidateQueue = useRef<RTCIceCandidate[]>([]);
+    const [isStartingShare, setIsStartingShare] = useState(false);
 
 
     useEffect(() => {
@@ -122,7 +123,7 @@ export default function WatchPartyPage() {
 
     // Main WebRTC Logic
     useEffect(() => {
-        if (authStatus !== 'authenticated' || !localUser) return;
+        if (authStatus !== 'authenticated' || !localUser || isStartingShare) return;
     
         if (localUser.id === broadcasterId && !localScreenStream) {
             setBroadcaster(params.sessionId, null);
@@ -273,7 +274,7 @@ export default function WatchPartyPage() {
                 cleanupConnections();
             }
         }
-    }, [broadcasterId, localUser, authStatus, params.sessionId, localScreenStream]);
+    }, [broadcasterId, localUser, authStatus, params.sessionId, localScreenStream, isStartingShare]);
 
 
     const handleSetVideo = () => {
@@ -309,7 +310,6 @@ export default function WatchPartyPage() {
                 if (result.error) {
                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to stop sharing.' });
                 } else {
-                    // Optimistic update
                     setBroadcasterId(null);
                     toast({ title: "Screen Sharing Stopped" });
                 }
@@ -323,13 +323,12 @@ export default function WatchPartyPage() {
             }
 
             // --- Logic to START screen sharing ---
+            setIsStartingShare(true);
             const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: { echoCancellation: true, noiseSuppression: true } });
             
-            // This handles when the user clicks the browser's native "Stop sharing" button
             const onStreamEnd = async () => {
                 stream.getVideoTracks()[0].removeEventListener('ended', onStreamEnd);
                 const sessionDoc = await getDoc(doc(db, 'sessions', params.sessionId));
-                // Only act if we are still the broadcaster
                 if (sessionDoc.data()?.broadcasterId === localUser?.id) {
                     await setBroadcaster(params.sessionId, null);
                 }
@@ -339,11 +338,9 @@ export default function WatchPartyPage() {
             setVideoSource(null);
             setLocalScreenStream(stream);
             
-            // Set this user as the broadcaster in the database
             const result = await setBroadcaster(params.sessionId, localUser!.id);
 
             if (result.error) {
-                // If the database update fails, stop everything
                 stream.getTracks().forEach(track => track.stop());
                 setLocalScreenStream(null);
                 toast({
@@ -352,7 +349,6 @@ export default function WatchPartyPage() {
                     description: result.error,
                 });
             } else {
-                // Optimistically update the local state immediately
                 setBroadcasterId(localUser!.id);
                 toast({
                     title: "Screen Sharing Started",
@@ -369,6 +365,8 @@ export default function WatchPartyPage() {
                   description: 'Could not start screen sharing. Please grant permission and try again.',
               });
             }
+        } finally {
+            setIsStartingShare(false);
         }
     };
     
