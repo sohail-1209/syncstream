@@ -5,33 +5,22 @@ import { Card } from "@/components/ui/card";
 import EmojiBar from "./emoji-bar";
 import { Film, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import ReactPlayer from 'react-player';
 
 export default function VideoPlayer({ 
-  videoSource, 
-  screenStream,
-  isBroadcaster
+  videoSource,
 }: { 
   videoSource: ProcessVideoUrlOutput | null;
-  screenStream: MediaStream | null;
-  isBroadcaster: boolean;
 }) {
   const { toast } = useToast();
   const [urlError, setUrlError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  
-  useEffect(() => {
-    if (videoRef.current) {
-        videoRef.current.srcObject = screenStream;
-    }
-  }, [screenStream]);
 
   // Reset error state when a new URL source is provided
   useEffect(() => {
@@ -72,17 +61,7 @@ export default function VideoPlayer({
   return (
     <Card className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
       <div className="relative flex-1 bg-black group">
-        {/* Always render the video tag for WebRTC */}
-        <video 
-          ref={videoRef} 
-          className={`w-full h-full object-contain ${screenStream ? '' : 'hidden'}`} 
-          autoPlay 
-          muted={isBroadcaster} 
-          playsInline 
-        />
-        
-        {/* Render ReactPlayer for URL sources, if not screen sharing */}
-        {isMounted && !screenStream && videoSource && !urlError && (
+        {isMounted && videoSource && !urlError ? (
           <>
             <ReactPlayer
               key={videoSource.correctedUrl}
@@ -102,11 +81,9 @@ export default function VideoPlayer({
             />
             <EmojiBar />
           </>
+        ) : (
+           renderPlaceholder()
         )}
-
-        {/* Render placeholder if no content is active */}
-        {!screenStream && !videoSource && renderPlaceholder()}
-        {urlError && renderPlaceholder()}
       </div>
     </Card>
   );

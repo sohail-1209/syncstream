@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import '@livekit/components-styles/dist/css/index.css';
 
 export const metadata: Metadata = {
   title: 'SyncStream',

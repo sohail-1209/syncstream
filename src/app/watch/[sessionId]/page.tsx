@@ -2,7 +2,7 @@
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState, useTransition, useRef } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -10,23 +10,20 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
-import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPassword, setBroadcaster } from "@/app/actions";
+import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPassword, setScreenSharer, getLiveKitToken } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc, deleteDoc, getDoc, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc } from "firebase/firestore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import LiveKitStage from "@/components/watch-party/livekit-stage";
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
-
-const rtcConfig = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-};
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
@@ -50,15 +47,10 @@ export default function WatchPartyPage() {
     const [sessionPassword, setSessionPassword] = useState<string | null>(null);
     const [isFetchingPassword, startFetchPasswordTransition] = useTransition();
 
-    // WebRTC state
-    const [broadcasterId, setBroadcasterId] = useState<string | null>(null);
-    const [localScreenStream, setLocalScreenStream] =useState<MediaStream | null>(null);
-    const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
-    const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
-    const candidateQueue = useRef<RTCIceCandidate[]>([]);
-    const broadcasterCandidateQueues = useRef<Record<string, RTCIceCandidate[]>>({});
-    const [isStartingShare, setIsStartingShare] = useState(false);
-
+    // Screen sharing state
+    const [activeSharer, setActiveSharer] = useState<string | null>(null);
+    const [livekitToken, setLivekitToken] = useState<string>('');
+    const [isTogglingShare, startShareToggleTransition] = useTransition();
 
     useEffect(() => {
         const checkSession = async () => {
@@ -68,7 +60,7 @@ export default function WatchPartyPage() {
                 setAuthStatus('error');
             } else if (result.data) {
                 setHasPassword(result.data.hasPassword);
-                setBroadcasterId(result.data.broadcasterId);
+                setActiveSharer(result.data.activeSharer);
                 if (result.data.hasPassword) {
                     setAuthStatus('prompt_password');
                 } else {
@@ -84,6 +76,24 @@ export default function WatchPartyPage() {
             setInviteLink(`${window.location.origin}/watch/${params.sessionId}`);
         }
     }, [params.sessionId]);
+    
+     useEffect(() => {
+        if (!localUser || !params.sessionId) return;
+
+        getLiveKitToken(params.sessionId, localUser.id)
+            .then(result => {
+                if (result.error) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Could not connect to media server',
+                        description: result.error,
+                    })
+                } else if (result.data) {
+                    setLivekitToken(result.data.token);
+                }
+            });
+
+    }, [localUser, params.sessionId, toast]);
 
     useEffect(() => {
         if (authStatus !== 'authenticated' || !localUser || !params.sessionId) return;
@@ -108,197 +118,22 @@ export default function WatchPartyPage() {
     }, [localUser, params.sessionId, authStatus]);
 
 
-    // Listen for broadcaster changes
+    // Listen for activeSharer changes
     useEffect(() => {
         if (authStatus !== 'authenticated') return;
         const sessionRef = doc(db, 'sessions', params.sessionId);
         const unsub = onSnapshot(sessionRef, (doc) => {
-            const newBroadcasterId = doc.data()?.broadcasterId ?? null;
-            if (newBroadcasterId !== broadcasterId) {
-                setBroadcasterId(newBroadcasterId);
+            const newSharer = doc.data()?.activeSharer ?? null;
+            if (newSharer !== activeSharer) {
+                setActiveSharer(newSharer);
             }
         });
         return () => unsub();
-    }, [params.sessionId, authStatus, broadcasterId]);
-
-
-    // Main WebRTC Logic
-    useEffect(() => {
-        if (authStatus !== 'authenticated' || !localUser || isStartingShare) return;
-    
-        if (localUser.id === broadcasterId && !localScreenStream) {
-            setBroadcaster(params.sessionId, null);
-            return;
-        }
-
-        const cleanupConnections = () => {
-            Object.values(peerConnections.current).forEach(pc => pc.close());
-            peerConnections.current = {};
-            setRemoteScreenStream(null);
-            broadcasterCandidateQueues.current = {};
-        };
-    
-        if (!broadcasterId) {
-            cleanupConnections();
-            if (localScreenStream) {
-                localScreenStream.getTracks().forEach(track => track.stop());
-                setLocalScreenStream(null);
-            }
-            return;
-        }
-
-        const unsubscribers: (() => void)[] = [];
-    
-        if (localUser.id === broadcasterId) {
-            const offersRef = collection(db, `sessions/${params.sessionId}/offers`);
-            const unsubOffers = onSnapshot(offersRef, (snapshot) => {
-                snapshot.docChanges().forEach(async (change) => {
-                    if (change.type === 'added') {
-                        const viewerId = change.doc.id;
-                        const offer = change.doc.data();
-
-                        if (peerConnections.current[viewerId]) {
-                             peerConnections.current[viewerId].close();
-                        }
-
-                        const pc = new RTCPeerConnection(rtcConfig);
-                        peerConnections.current[viewerId] = pc;
-
-                        localScreenStream?.getTracks().forEach(track => {
-                             if(localScreenStream) pc.addTrack(track, localScreenStream);
-                        });
-
-                        pc.onicecandidate = e => {
-                            if (e.candidate) {
-                                addDoc(collection(db, `sessions/${params.sessionId}/iceCandidates`), { from: localUser.id, to: viewerId, candidate: e.candidate.toJSON() });
-                            }
-                        };
-                        
-                        try {
-                            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                            
-                            const queuedCandidates = broadcasterCandidateQueues.current[viewerId] || [];
-                            for (const candidate of queuedCandidates) {
-                                try {
-                                    await pc.addIceCandidate(candidate);
-                                } catch (e) { console.error("Error adding queued ICE candidate for broadcaster: ", e); }
-                            }
-                            broadcasterCandidateQueues.current[viewerId] = [];
-
-                            const answer = await pc.createAnswer();
-                            await pc.setLocalDescription(answer);
-                            await setDoc(doc(db, `sessions/${params.sessionId}/answers`, viewerId), { from: localUser.id, answer: answer });
-                        } catch (e) { console.error("Error handling offer: ", e); }
-                        
-                        await deleteDoc(change.doc.ref);
-                    }
-                });
-            });
-            unsubscribers.push(unsubOffers);
-
-            const candidatesQuery = query(collection(db, `sessions/${params.sessionId}/iceCandidates`), where("to", "==", localUser.id));
-            const unsubCandidates = onSnapshot(candidatesQuery, (snapshot) => {
-                snapshot.docChanges().forEach(async (change) => {
-                    if (change.type === 'added') {
-                        const data = change.doc.data();
-                        const viewerId = data.from;
-                        const candidate = new RTCIceCandidate(data.candidate);
-                        const pc = peerConnections.current[viewerId];
-
-                        if (pc && pc.remoteDescription) {
-                            try {
-                                await pc.addIceCandidate(candidate);
-                            } catch (e) { console.error("Error adding ICE candidate: ", e); }
-                        } else {
-                            if (!broadcasterCandidateQueues.current[viewerId]) {
-                                broadcasterCandidateQueues.current[viewerId] = [];
-                            }
-                            broadcasterCandidateQueues.current[viewerId].push(candidate);
-                        }
-                        await deleteDoc(change.doc.ref);
-                    }
-                });
-            });
-            unsubscribers.push(unsubCandidates);
-
-            const participantsRef = collection(db, `sessions/${params.sessionId}/participants`);
-            const unsubParticipants = onSnapshot(participantsRef, (snapshot) => {
-                const currentParticipants = new Set(snapshot.docs.map(d => d.id));
-                Object.keys(peerConnections.current).forEach(peerId => {
-                    if (!currentParticipants.has(peerId)) {
-                        peerConnections.current[peerId].close();
-                        delete peerConnections.current[peerId];
-                    }
-                });
-            });
-            unsubscribers.push(unsubParticipants);
-
-            return () => {
-                unsubscribers.forEach(unsub => unsub());
-                broadcasterCandidateQueues.current = {};
-            }
-        } 
-        else {
-            const pc = new RTCPeerConnection(rtcConfig);
-            peerConnections.current[broadcasterId] = pc;
-    
-            pc.onicecandidate = e => {
-                if(e.candidate) {
-                    addDoc(collection(db, `sessions/${params.sessionId}/iceCandidates`), { from: localUser.id, to: broadcasterId, candidate: e.candidate.toJSON() })
-                }
-            };
-            
-            pc.ontrack = (event) => setRemoteScreenStream(event.streams[0]);
-    
-            const createOffer = async () => {
-                try {
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    await setDoc(doc(db, `sessions/${params.sessionId}/offers`, localUser.id), offer);
-                } catch (e) { console.error("Error creating offer:", e); }
-            };
-            createOffer();
-    
-            const answerRef = doc(db, `sessions/${params.sessionId}/answers`, localUser.id);
-            const unsubAnswer = onSnapshot(answerRef, async (docSnap) => {
-                if (docSnap.exists() && docSnap.data().from === broadcasterId && !pc.currentRemoteDescription) {
-                    try {
-                        await pc.setRemoteDescription(new RTCSessionDescription(docSnap.data().answer));
-                        candidateQueue.current.forEach(candidate => pc.addIceCandidate(candidate));
-                        candidateQueue.current = [];
-                    } catch(e) { console.error("Error setting remote description from answer:", e); }
-                    await deleteDoc(docSnap.ref);
-                }
-            });
-
-            const candidatesQuery = query(collection(db, `sessions/${params.sessionId}/iceCandidates`), where("to", "==", localUser.id), where("from", "==", broadcasterId));
-            const unsubCandidates = onSnapshot(candidatesQuery, (snap) => {
-                snap.docChanges().forEach(async (change) => {
-                    if (change.type === 'added') {
-                        const candidate = new RTCIceCandidate(change.doc.data().candidate);
-                        try {
-                            if (pc.remoteDescription) {
-                                await pc.addIceCandidate(candidate);
-                            } else {
-                                candidateQueue.current.push(candidate);
-                            }
-                        } catch(e) { console.error("Error adding ICE candidate:", e); }
-                        await deleteDoc(change.doc.ref);
-                    }
-                });
-            });
-
-             return () => {
-                unsubAnswer();
-                unsubCandidates();
-                cleanupConnections();
-            }
-        }
-    }, [broadcasterId, localUser, authStatus, params.sessionId, localScreenStream, isStartingShare]);
+    }, [params.sessionId, authStatus, activeSharer]);
 
 
     const handleSetVideo = () => {
-        if (broadcasterId) {
+        if (activeSharer) {
             toast({
                 variant: 'destructive',
                 title: 'Cannot set video during screen share.',
@@ -323,73 +158,17 @@ export default function WatchPartyPage() {
     };
 
     const handleShareScreen = async () => {
-        try {
-            // --- Logic to STOP screen sharing ---
-            if (broadcasterId && broadcasterId === localUser?.id) {
-                await setBroadcaster(params.sessionId, null);
-                // The useEffect will handle state cleanup
-                return;
-            }
-
-            // --- Prevent another user from starting a share ---
-            if (broadcasterId && broadcasterId !== localUser?.id) {
-                toast({ variant: 'destructive', title: 'Action not allowed', description: 'Another user is already sharing their screen.' });
-                return;
-            }
-
-            // --- Logic to START screen sharing ---
-            setIsStartingShare(true);
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: { echoCancellation: true, noiseSuppression: true } });
-            
-            const onStreamEnd = async () => {
-                stream.getVideoTracks()[0].removeEventListener('ended', onStreamEnd);
-                const sessionDoc = await getDoc(doc(db, 'sessions', params.sessionId));
-                // Only stop the broadcast if I am still the broadcaster
-                if (sessionDoc.data()?.broadcasterId === localUser?.id) {
-                    await setBroadcaster(params.sessionId, null);
+       startShareToggleTransition(async () => {
+           if (activeSharer) { // Someone is sharing
+                if (activeSharer === localUser?.id) { // and it's me
+                    await setScreenSharer(params.sessionId, null);
+                } else {
+                    toast({ variant: 'destructive', title: 'Action not allowed', description: 'Another user is already sharing their screen.' });
                 }
-            };
-            stream.getVideoTracks()[0].addEventListener('ended', onStreamEnd);
-            
-            setVideoSource(null);
-            setLocalScreenStream(stream);
-            
-            // Optimistically update the UI
-            setBroadcasterId(localUser!.id);
-            
-            const result = await setBroadcaster(params.sessionId, localUser!.id);
-
-            if (result.error) {
-                // If the backend fails, revert the optimistic update and stop the stream
-                stream.getTracks().forEach(track => track.stop());
-                setLocalScreenStream(null);
-                setBroadcasterId(null); // Revert
-                await setBroadcaster(params.sessionId, null); // Ensure backend is clean
-
-                toast({
-                    variant: 'destructive',
-                    title: 'Failed to start sharing',
-                    description: result.error,
-                });
-            } else {
-                toast({
-                    title: "Screen Sharing Started",
-                    description: "You are now sharing your screen.",
-                });
-            }
-
-        } catch (error) {
-            if ((error as DOMException).name !== 'NotAllowedError') {
-              console.error("Screen share error:", error);
-              toast({
-                  variant: 'destructive',
-                  title: 'Screen Share Failed',
-                  description: 'Could not start screen sharing. Please grant permission and try again.',
-              });
-            }
-        } finally {
-            setIsStartingShare(false);
-        }
+           } else { // No one is sharing, I will start
+                await setScreenSharer(params.sessionId, localUser!.id);
+           }
+       })
     };
     
     const handleCopyInvite = () => {
@@ -403,8 +182,8 @@ export default function WatchPartyPage() {
     }
 
     const handleExitRoom = async () => {
-        if (broadcasterId === localUser?.id) {
-            await setBroadcaster(params.sessionId, null);
+        if (activeSharer === localUser?.id) {
+            await setScreenSharer(params.sessionId, null);
         }
         router.push('/');
     };
@@ -492,8 +271,7 @@ export default function WatchPartyPage() {
         );
     }
     
-    const screenStream = broadcasterId === localUser?.id ? localScreenStream : remoteScreenStream;
-    const amBroadcaster = broadcasterId === localUser?.id;
+    const amSharing = activeSharer === localUser?.id;
 
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
@@ -546,14 +324,14 @@ export default function WatchPartyPage() {
                         </Button>
                     </RecommendationsModal>
 
-                     <Button variant="outline" onClick={handleShareScreen} disabled={(broadcasterId !== null && !amBroadcaster) || isStartingShare}>
-                        <ScreenShare className="h-4 w-4 mr-2" />
-                        {isStartingShare ? "Starting..." : amBroadcaster ? 'Stop Sharing' : 'Share Screen'}
+                     <Button variant="outline" onClick={handleShareScreen} disabled={(activeSharer !== null && !amSharing) || isTogglingShare}>
+                        {amSharing ? <VideoOff className="h-4 w-4 mr-2" /> : <ScreenShare className="h-4 w-4 mr-2" />}
+                        {isTogglingShare ? "..." : amSharing ? 'Stop Sharing' : 'Share Screen'}
                     </Button>
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
                         <PopoverTrigger asChild>
-                             <Button variant="outline" disabled={!!broadcasterId}>
+                             <Button variant="outline" disabled={!!activeSharer}>
                                 <LinkIcon className="h-4 w-4 mr-2" />
                                 Set Video
                             </Button>
@@ -618,7 +396,11 @@ export default function WatchPartyPage() {
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
-                    <VideoPlayer key={`${broadcasterId}-${amBroadcaster}`} videoSource={broadcasterId ? null : videoSource} screenStream={screenStream} isBroadcaster={amBroadcaster} />
+                   {activeSharer && livekitToken ? (
+                        <LiveKitStage token={livekitToken} roomName={params.sessionId} sharerId={activeSharer}/>
+                   ) : (
+                        <VideoPlayer videoSource={videoSource} />
+                   )}
                 </div>
                 <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
                     <Sidebar sessionId={params.sessionId} user={localUser} />
@@ -627,5 +409,3 @@ export default function WatchPartyPage() {
         </div>
     );
 }
-
-    

@@ -5,6 +5,7 @@ import { recommendContent, type RecommendContentInput } from "@/ai/flows/recomme
 import { processVideoUrl, type ProcessVideoUrlInput } from "@/ai/flows/process-video-url";
 import { collection, deleteDoc, doc, getDocs, getDoc, setDoc, serverTimestamp, query, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { AccessToken } from 'livekit-server-sdk';
 
 interface FormInput {
     watchHistory: string;
@@ -87,7 +88,7 @@ export async function getSessionDetails(sessionId: string) {
         const sessionData = sessionSnap.data();
         const hasPassword = !!sessionData?.password;
 
-        return { data: { hasPassword, broadcasterId: sessionData?.broadcasterId || null }, error: null };
+        return { data: { hasPassword, activeSharer: sessionData?.activeSharer || null }, error: null };
 
     } catch (error) {
         console.error("Failed to get session details:", error);
@@ -153,7 +154,7 @@ export async function deleteRoom(sessionId: string, password?: string) {
             }
         }
         
-        const subcollections = ['participants', 'messages', 'offers', 'answers', 'iceCandidates'];
+        const subcollections = ['participants', 'messages'];
         for (const collName of subcollections) {
             const collRef = collection(sessionRef, collName);
             const snapshot = await getDocs(collRef);
@@ -195,30 +196,35 @@ export async function getSessionPassword(sessionId: string) {
     }
 }
 
-export async function setBroadcaster(sessionId: string, userId: string | null) {
+export async function getLiveKitToken(roomName: string, participantIdentity: string) {
+    if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET || !process.env.NEXT_PUBLIC_LIVEKIT_URL) {
+        return { data: null, error: "LiveKit server environment variables are not configured." };
+    }
+
     try {
-        const sessionRef = doc(db, 'sessions', sessionId);
+        const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
+            identity: participantIdentity,
+            name: participantIdentity,
+        });
 
-        if (userId === null) {
-            const subcollections = ['offers', 'answers', 'iceCandidates'];
-            for (const collName of subcollections) {
-                const collRef = collection(sessionRef, collName);
-                const snapshot = await getDocs(collRef);
-                if (!snapshot.empty) {
-                    const batch = writeBatch(db);
-                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                    await batch.commit();
-                }
-            }
-        }
-        
-        await setDoc(sessionRef, { broadcasterId: userId }, { merge: true });
+        at.addGrant({ roomJoin: true, room: roomName, canPublish: true, canSubscribe: true });
 
-        return { success: true, error: null };
+        const token = await at.toJwt();
+        return { data: { token }, error: null };
     } catch (error) {
-        console.error("Failed to set broadcaster:", error);
-        return { error: "Failed to update broadcaster status. Check Firestore rules." };
+        console.error("Failed to generate LiveKit token:", error);
+        return { data: null, error: "Could not generate a connection token." };
     }
 }
 
+export async function setScreenSharer(sessionId: string, userId: string | null) {
+    try {
+        const sessionRef = doc(db, 'sessions', sessionId);
+        await setDoc(sessionRef, { activeSharer: userId }, { merge: true });
+        return { success: true, error: null };
+    } catch (error) {
+        console.error("Failed to set screen sharer:", error);
+        return { success: false, error: "Failed to update screen sharer status." };
+    }
+}
     
