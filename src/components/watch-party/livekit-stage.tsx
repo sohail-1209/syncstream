@@ -12,7 +12,7 @@ import {
   ControlBar,
 } from '@livekit/components-react';
 import { useLocalUser } from '@/hooks/use-local-user';
-import { RoomEvent, Track } from 'livekit-client';
+import { RoomEvent, Track, DisconnectReason } from 'livekit-client';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { ScreenShare } from 'lucide-react';
@@ -65,7 +65,7 @@ function CustomVideoConference() {
   }
 
   return (
-    <GridLayout tracks={tracks} style={{ height: 'calc(100% - 50px)' }}>
+    <GridLayout tracks={tracks} style={{ height: '100%' }}>
       <ParticipantTile />
     </GridLayout>
   );
@@ -90,28 +90,34 @@ export default function LiveKitStage({ token, roomName, sharerId }: { token: str
                 data-lk-theme="default"
                 style={{ height: '100%' }}
                 onError={(error) => {
-                    // This specific error is benign and happens on fast re-renders/unmounts.
+                    // This specific error is benign and happens on fast re-renders/unmounts in React's strict mode.
                     // We can safely ignore it to keep the console clean.
-                    if (error.message.includes('cannot send signal request before connected')) {
+                    if (error.message?.toLowerCase().includes('cannot send signal request before connected')) {
                         console.log('Ignoring benign LiveKit disconnect error.');
                         return;
                     }
                      toast({
                         variant: 'destructive',
-                        title: 'LiveKit Error',
+                        title: 'LiveKit Connection Error',
                         description: error.message,
                     });
                 }}
                 onDisconnected={(reason) => {
                     console.log('disconnected from room', reason);
                     // Avoid showing a toast for expected disconnections
-                    if (reason && reason.message !== 'Client initiated disconnect' && reason.message !== 'user closed connection') {
-                       toast({
-                            variant: 'destructive',
-                            title: 'Disconnected from room',
-                            description: reason?.message ?? 'The connection was lost.',
-                        });
+                    if (
+                        reason === DisconnectReason.CLIENT_INITIATED || 
+                        reason === DisconnectReason.UNKNOWN_REASON ||
+                        reason === DisconnectReason.SIGNAL_CLOSE
+                    ) {
+                       return;
                     }
+
+                    toast({
+                        variant: 'destructive',
+                        title: 'Disconnected from room',
+                        description: `The connection was lost unexpectedly. Reason: ${DisconnectReason[reason ?? DisconnectReason.UNKNOWN_REASON]}`,
+                    });
                 }}
             >
                 <CustomVideoConference />
