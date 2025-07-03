@@ -89,6 +89,19 @@ export default function LiveKitStage({ token, roomName, sharerId }: { token: str
                 video={false} // Default to no camera
                 data-lk-theme="default"
                 style={{ height: '100%' }}
+                onError={(error) => {
+                    // This specific error is benign and happens on fast re-renders/unmounts.
+                    // We can safely ignore it to keep the console clean.
+                    if (error.message.includes('cannot send signal request before connected')) {
+                        console.log('Ignoring benign LiveKit disconnect error.');
+                        return;
+                    }
+                     toast({
+                        variant: 'destructive',
+                        title: 'LiveKit Error',
+                        description: error.message,
+                    });
+                }}
                 onDisconnected={(reason) => {
                     console.log('disconnected from room', reason);
                     // Avoid showing a toast for expected disconnections
