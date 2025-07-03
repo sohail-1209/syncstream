@@ -3,57 +3,16 @@
 
 import { useEffect, useState, useRef } from 'react';
 import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  useRoomContext,
   useTracks,
-  ControlBar,
   VideoTrack,
 } from '@livekit/components-react';
-import { useLocalUser } from '@/hooks/use-local-user';
-import { RoomEvent, Track, DisconnectReason, setLogLevel, LogLevel } from 'livekit-client';
+import { Track } from 'livekit-client';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { ScreenShare, Maximize, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-
-// Silences benign "cannot send signal request before connected" errors in development.
-// This is a known side effect of React's Strict Mode.
-if (process.env.NODE_ENV === 'development') {
-  setLogLevel(LogLevel.warn);
-}
-
-function ScreenShareManager({ sharerId }: { sharerId: string }) {
-    const room = useRoomContext();
-    const localUser = useLocalUser();
-
-    useEffect(() => {
-        const startSharing = () => {
-             if (localUser?.id === sharerId) {
-                room.localParticipant.setScreenShareEnabled(true, { audio: true });
-            }
-        }
-
-        if (room.state === 'connected') {
-            startSharing();
-        } else {
-            room.once(RoomEvent.Connected, startSharing);
-        }
-
-        return () => {
-            if (localUser?.id === sharerId && room.localParticipant.isScreenShareEnabled) {
-                 if (room.state === 'connected') {
-                    room.localParticipant.setScreenShareEnabled(false);
-                 }
-            }
-        };
-    }, [sharerId, localUser, room]);
-
-    return null;
-}
-
-function CustomVideoConference() {
+export default function LiveKitStage({ sharerId }: { sharerId: string }) {
   const tracks = useTracks(
     [
       { source: Track.Source.ScreenShare, withPlaceholder: false },
@@ -124,56 +83,4 @@ function CustomVideoConference() {
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
      />
   );
-}
-
-
-export default function LiveKitStage({ token, roomName, sharerId }: { token: string; roomName: string; sharerId: string }) {
-    const { toast } = useToast();
-
-    if (!process.env.NEXT_PUBLIC_LIVEKIT_URL) {
-        return <div className="flex items-center justify-center h-full">LiveKit URL is not configured.</div>
-    }
-
-    return (
-        <div style={{ height: '100%', width: '100%' }}>
-            <LiveKitRoom
-                token={token}
-                serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-                connect={true}
-                audio={true}
-                video={false} // Default to no camera
-                data-lk-theme="default"
-                style={{ height: '100%' }}
-                onDisconnected={(reason) => {
-                    // Avoid showing a toast for expected disconnections like leaving the room.
-                    if (
-                        reason === DisconnectReason.CLIENT_INITIATED ||
-                        reason === DisconnectReason.SIGNAL_CLOSE ||
-                        reason === DisconnectReason.DUPLICATE_IDENTITY
-                    ) {
-                       return;
-                    }
-
-                    toast({
-                        variant: 'destructive',
-                        title: 'Disconnected from room',
-                        description: `The connection was lost unexpectedly. Reason: ${DisconnectReason[reason ?? DisconnectReason.UNKNOWN_REASON]}`,
-                    });
-                }}
-            >
-                <CustomVideoConference />
-                <RoomAudioRenderer />
-                <ScreenShareManager sharerId={sharerId} />
-                <ControlBar
-                    controls={{
-                        microphone: true,
-                        camera: false,
-                        chat: false,
-                        screenShare: false,
-                        leave: false,
-                    }}
-                />
-            </LiveKitRoom>
-        </div>
-    );
 }

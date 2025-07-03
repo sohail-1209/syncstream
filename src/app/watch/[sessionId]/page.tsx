@@ -10,24 +10,36 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPassword, setScreenSharer, getLiveKitToken } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
-import { useLocalUser } from "@/hooks/use-local-user";
+import { useLocalUser, type LocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc } from "firebase/firestore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import LiveKitStage from "@/components/watch-party/livekit-stage";
 import { cn } from "@/lib/utils";
+import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant, useIsMuted } from "@livekit/components-react";
+import { Track, DisconnectReason } from "livekit-client";
+
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
 
-export default function WatchPartyPage() {
-    const params = useParams<{ sessionId: string }>();
+function WatchPartyContent({
+    sessionId,
+    initialHasPassword,
+    initialActiveSharer,
+    user
+}: {
+    sessionId: string,
+    initialHasPassword: boolean,
+    initialActiveSharer: string | null,
+    user: LocalUser
+}) {
     const router = useRouter();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
@@ -37,79 +49,36 @@ export default function WatchPartyPage() {
     const [tempUrl, setTempUrl] = useState('');
     const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
     const [urlError, setUrlError] = useState<string | null>(null);
-    const localUser = useLocalUser();
 
-    // Auth state
-    const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
-    const [authError, setAuthError] = useState<string | null>(null);
-    const [passwordInput, setPasswordInput] = useState('');
-    const [isVerifying, startVerifyTransition] = useTransition();
-    const [hasPassword, setHasPassword] = useState(false);
+    const [hasPassword, setHasPassword] = useState(initialHasPassword);
     const [sessionPassword, setSessionPassword] = useState<string | null>(null);
     const [isFetchingPassword, startFetchPasswordTransition] = useTransition();
 
-    // Screen sharing state
-    const [activeSharer, setActiveSharer] = useState<string | null>(null);
-    const [livekitToken, setLivekitToken] = useState<string>('');
+    const [activeSharer, setActiveSharer] = useState<string | null>(initialActiveSharer);
     const [isTogglingShare, startShareToggleTransition] = useTransition();
 
-    // UI State
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const pageRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const checkSession = async () => {
-            const result = await getSessionDetails(params.sessionId);
-            if (result.error) {
-                setAuthError(result.error);
-                setAuthStatus('error');
-            } else if (result.data) {
-                setHasPassword(result.data.hasPassword);
-                setActiveSharer(result.data.activeSharer);
-                if (result.data.hasPassword) {
-                    setAuthStatus('prompt_password');
-                } else {
-                    setAuthStatus('authenticated');
-                }
-            }
-        };
-        checkSession();
-    }, [params.sessionId]);
+    
+    // LiveKit state
+    const { localParticipant } = useLocalParticipant();
+    const isMicMuted = useIsMuted(Track.Source.Microphone);
+    const amSharing = activeSharer === user?.id;
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            setInviteLink(`${window.location.origin}/watch/${params.sessionId}`);
+            setInviteLink(`${window.location.origin}/watch/${sessionId}`);
         }
-    }, [params.sessionId]);
+    }, [sessionId]);
     
-     useEffect(() => {
-        if (!localUser || !params.sessionId) return;
-
-        getLiveKitToken(params.sessionId, localUser.id)
-            .then(result => {
-                if (result.error) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Could not connect to media server',
-                        description: result.error,
-                    })
-                } else if (result.data) {
-                    setLivekitToken(result.data.token);
-                }
-            });
-
-    }, [localUser, params.sessionId, toast]);
-
     useEffect(() => {
-        if (authStatus !== 'authenticated' || !localUser || !params.sessionId) return;
-
-        const sessionRef = doc(db, "sessions", params.sessionId);
-        const userRef = doc(collection(sessionRef, "participants"), localUser.id);
+        const sessionRef = doc(db, "sessions", sessionId);
+        const userRef = doc(collection(sessionRef, "participants"), user.id);
 
         const setPresence = async () => {
              await setDoc(sessionRef, { updatedAt: serverTimestamp() }, { merge: true });
-             await setDoc(userRef, { ...localUser, lastSeen: serverTimestamp() }, { merge: true });
+             await setDoc(userRef, { ...user, lastSeen: serverTimestamp() }, { merge: true });
         }
         
         setPresence();
@@ -121,13 +90,12 @@ export default function WatchPartyPage() {
         return () => {
             clearInterval(interval);
         };
-    }, [localUser, params.sessionId, authStatus]);
+    }, [user, sessionId]);
 
 
     // Listen for activeSharer changes
     useEffect(() => {
-        if (authStatus !== 'authenticated') return;
-        const sessionRef = doc(db, 'sessions', params.sessionId);
+        const sessionRef = doc(db, 'sessions', sessionId);
         const unsub = onSnapshot(sessionRef, (doc) => {
             const newSharer = doc.data()?.activeSharer ?? null;
             if (newSharer !== activeSharer) {
@@ -135,7 +103,15 @@ export default function WatchPartyPage() {
             }
         });
         return () => unsub();
-    }, [params.sessionId, authStatus, activeSharer]);
+    }, [sessionId, activeSharer]);
+    
+    // Sync local participant's screen share state with the activeSharer from DB
+    useEffect(() => {
+        if (localParticipant) {
+            localParticipant.setScreenShareEnabled(amSharing, { audio: true });
+        }
+    }, [amSharing, localParticipant]);
+
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -173,16 +149,22 @@ export default function WatchPartyPage() {
 
     const handleShareScreen = async () => {
        startShareToggleTransition(async () => {
-           if (activeSharer) { // Someone is sharing
-                if (activeSharer === localUser?.id) { // and it's me
-                    await setScreenSharer(params.sessionId, null);
+           if (activeSharer) {
+                if (amSharing) {
+                    await setScreenSharer(sessionId, null);
                 } else {
                     toast({ variant: 'destructive', title: 'Action not allowed', description: 'Another user is already sharing their screen.' });
                 }
-           } else { // No one is sharing, I will start
-                await setScreenSharer(params.sessionId, localUser!.id);
+           } else { 
+                await setScreenSharer(sessionId, user!.id);
            }
        })
+    };
+    
+    const handleToggleMic = () => {
+        if (localParticipant) {
+            localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled);
+        }
     };
     
     const handleCopyInvite = () => {
@@ -196,30 +178,16 @@ export default function WatchPartyPage() {
     }
 
     const handleExitRoom = async () => {
-        if (activeSharer === localUser?.id) {
-            await setScreenSharer(params.sessionId, null);
+        if (amSharing) {
+            await setScreenSharer(sessionId, null);
         }
         router.push('/');
     };
     
-    const handleVerifyPassword = () => {
-        startVerifyTransition(async () => {
-            setAuthError(null);
-            const result = await verifyPassword(params.sessionId, passwordInput);
-            if (result.error) {
-                setAuthError(result.error);
-            } else if (result.data?.success) {
-                setAuthStatus('authenticated');
-            } else {
-                setAuthError("Incorrect password. Please try again.");
-            }
-        });
-    }
-    
     const handleFetchPassword = () => {
-        if (!params.sessionId) return;
+        if (!sessionId) return;
         startFetchPasswordTransition(async () => {
-            const result = await getSessionPassword(params.sessionId);
+            const result = await getSessionPassword(sessionId);
             if (result.error) {
                 setSessionPassword('Error');
                 toast({ variant: 'destructive', title: 'Error', description: result.error });
@@ -247,68 +215,9 @@ export default function WatchPartyPage() {
         }
     };
 
-
-    if (authStatus === 'checking') {
-        return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
-    }
-    
-    if (authStatus === 'error') {
-         return (
-            <div className="flex h-screen w-full items-center justify-center bg-background text-center p-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-destructive">Error</h1>
-                    <p className="text-muted-foreground">{authError || 'An unknown error occurred.'}</p>
-                    <Button onClick={() => router.push('/')} className="mt-4">Go Home</Button>
-                </div>
-            </div>
-        );
-    }
-    
-    if (authStatus === 'prompt_password') {
-        return (
-             <Dialog open={true} onOpenChange={(isOpen) => !isOpen && router.push('/')}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Password Required</DialogTitle>
-                        <DialogDescription>
-                            This watch party is private. Please enter the password to join.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-2 py-4">
-                        <Label htmlFor="join-password">Password</Label>
-                        <Input
-                            id="join-password"
-                            type="password"
-                            placeholder="Enter password"
-                            value={passwordInput}
-                            onChange={(e) => setPasswordInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
-                            disabled={isVerifying}
-                        />
-                         {authError && <p className="text-xs text-destructive pt-2">{authError}</p>}
-                    </div>
-                    <DialogFooter className="sm:justify-between">
-                         <Button variant="outline" onClick={() => router.push('/')}>
-                            <LogOut className="mr-2 h-4 w-4"/> Leave
-                        </Button>
-                        <Button onClick={handleVerifyPassword} disabled={isVerifying}>
-                            {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} Join Session
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        );
-    }
-    
-    const amSharing = activeSharer === localUser?.id;
-
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
-            <header className="relative z-50 flex items-center justify-between px-4 py-2 border-b">
+            <header className="relative flex items-center justify-between px-4 py-2 border-b z-50">
                 <Link href="/" className="flex items-center gap-2">
                     <Logo className="h-8 w-8 text-primary" />
                     <span className="font-bold text-xl font-headline hidden sm:inline">SyncStream</span>
@@ -317,7 +226,7 @@ export default function WatchPartyPage() {
                 <div className="hidden md:flex flex-col items-center">
                     <span className="text-xs text-muted-foreground">ROOM CODE</span>
                     <div className="flex items-center gap-1">
-                        <Badge variant="outline" className="text-base font-mono tracking-widest px-3 py-1">{params.sessionId}</Badge>
+                        <Badge variant="outline" className="text-base font-mono tracking-widest px-3 py-1">{sessionId}</Badge>
                         {hasPassword && (
                             <Popover onOpenChange={(open) => {
                                 if (open) {
@@ -371,6 +280,14 @@ export default function WatchPartyPage() {
                         {isTogglingShare ? <Loader2 className="h-4 w-4 animate-spin" /> : (amSharing ? <VideoOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />)}
                         <span className="sr-only">{isTogglingShare ? "Loading..." : amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
                     </Button>
+                    
+                    {activeSharer && (
+                         <Button variant="outline" size="icon" onClick={handleToggleMic}>
+                            {isMicMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                            <span className="sr-only">{isMicMuted ? "Unmute" : "Mute"}</span>
+                        </Button>
+                    )}
+
 
                     <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
                         <PopoverTrigger asChild>
@@ -435,9 +352,9 @@ export default function WatchPartyPage() {
                         {isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                         <span className="sr-only">Toggle Sidebar</span>
                     </Button>
-                    <Button variant="outline" onClick={handleExitRoom}>
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Exit
+                    <Button variant="outline" size="icon" onClick={handleExitRoom}>
+                        <LogOut className="h-4 w-4" />
+                        <span className="sr-only">Exit</span>
                     </Button>
                 </div>
             </header>
@@ -448,8 +365,8 @@ export default function WatchPartyPage() {
                     : "md:grid-cols-1"
             )}>
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
-                   {activeSharer && livekitToken ? (
-                        <LiveKitStage token={livekitToken} roomName={params.sessionId} sharerId={activeSharer}/>
+                   {activeSharer ? (
+                        <LiveKitStage sharerId={activeSharer}/>
                    ) : (
                         <VideoPlayer videoSource={videoSource} />
                    )}
@@ -458,11 +375,174 @@ export default function WatchPartyPage() {
                     "md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0",
                     !isSidebarOpen && "hidden"
                 )}>
-                    <Sidebar sessionId={params.sessionId} user={localUser} />
+                    <Sidebar sessionId={sessionId} user={user} />
                 </div>
             </main>
         </div>
     );
 }
 
+
+export default function WatchPartyPage() {
+    const params = useParams<{ sessionId: string }>();
+    const router = useRouter();
+    const { toast } = useToast();
+    const localUser = useLocalUser();
+
+    // Auth state
+    const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
+    const [authError, setAuthError] = useState<string | null>(null);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [isVerifying, startVerifyTransition] = useTransition();
+
+    const [sessionDetails, setSessionDetails] = useState<{ hasPassword: boolean; activeSharer: string | null } | null>(null);
+    const [livekitToken, setLivekitToken] = useState<string>('');
+
+    useEffect(() => {
+        const checkSession = async () => {
+            const result = await getSessionDetails(params.sessionId);
+            if (result.error) {
+                setAuthError(result.error);
+                setAuthStatus('error');
+            } else if (result.data) {
+                setSessionDetails(result.data);
+                if (result.data.hasPassword) {
+                    setAuthStatus('prompt_password');
+                } else {
+                    setAuthStatus('authenticated');
+                }
+            }
+        };
+        checkSession();
+    }, [params.sessionId]);
     
+     useEffect(() => {
+        if (authStatus !== 'authenticated' || !localUser) return;
+
+        getLiveKitToken(params.sessionId, localUser.id)
+            .then(result => {
+                if (result.error) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Could not connect to media server',
+                        description: result.error,
+                    })
+                } else if (result.data) {
+                    setLivekitToken(result.data.token);
+                }
+            });
+
+    }, [localUser, params.sessionId, toast, authStatus]);
+
+
+    const handleVerifyPassword = () => {
+        startVerifyTransition(async () => {
+            setAuthError(null);
+            const result = await verifyPassword(params.sessionId, passwordInput);
+            if (result.error) {
+                setAuthError(result.error);
+            } else if (result.data?.success) {
+                setAuthStatus('authenticated');
+            } else {
+                setAuthError("Incorrect password. Please try again.");
+            }
+        });
+    }
+
+    if (authStatus === 'checking') {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
+    }
+    
+    if (authStatus === 'error') {
+         return (
+            <div className="flex h-screen w-full items-center justify-center bg-background text-center p-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-destructive">Error</h1>
+                    <p className="text-muted-foreground">{authError || 'An unknown error occurred.'}</p>
+                    <Button onClick={() => router.push('/')} className="mt-4">Go Home</Button>
+                </div>
+            </div>
+        );
+    }
+    
+    if (authStatus === 'prompt_password') {
+        return (
+             <Dialog open={true} onOpenChange={(isOpen) => !isOpen && router.push('/')}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Password Required</DialogTitle>
+                        <DialogDescription>
+                            This watch party is private. Please enter the password to join.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-4">
+                        <Label htmlFor="join-password">Password</Label>
+                        <Input
+                            id="join-password"
+                            type="password"
+                            placeholder="Enter password"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                            disabled={isVerifying}
+                        />
+                         {authError && <p className="text-xs text-destructive pt-2">{authError}</p>}
+                    </div>
+                    <DialogFooter className="sm:justify-between">
+                         <Button variant="outline" onClick={() => router.push('/')}>
+                            <LogOut className="mr-2 h-4 w-4"/> Leave
+                        </Button>
+                        <Button onClick={handleVerifyPassword} disabled={isVerifying}>
+                            {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} Join Session
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        );
+    }
+    
+    if (authStatus === 'authenticated' && livekitToken && sessionDetails && localUser) {
+        return (
+            <LiveKitRoom
+                token={livekitToken}
+                serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+                connect={true}
+                audio={true}
+                video={false}
+                onDisconnected={(reason) => {
+                    if (
+                        reason === DisconnectReason.CLIENT_INITIATED ||
+                        reason === DisconnectReason.SIGNAL_CLOSE ||
+                        reason === DisconnectReason.DUPLICATE_IDENTITY
+                    ) {
+                       return;
+                    }
+
+                    toast({
+                        variant: 'destructive',
+                        title: 'Disconnected from room',
+                        description: `The connection was lost unexpectedly. Reason: ${DisconnectReason[reason ?? DisconnectReason.UNKNOWN_REASON]}`,
+                    });
+                }}
+            >
+                <WatchPartyContent 
+                    sessionId={params.sessionId}
+                    initialHasPassword={sessionDetails.hasPassword}
+                    initialActiveSharer={sessionDetails.activeSharer}
+                    user={localUser}
+                />
+                <RoomAudioRenderer />
+            </LiveKitRoom>
+        );
+    }
+
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+}
