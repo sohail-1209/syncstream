@@ -55,7 +55,10 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">
+    <main className="relative flex min-h-screen flex-col items-center justify-center p-8 bg-background">
+      <div className="absolute top-4 right-4">
+        <ExistingRoomsList />
+      </div>
       <div className="text-center space-y-6 max-w-2xl mx-auto">
         <div className="flex justify-center items-center gap-4">
           <Logo className="h-16 w-16 text-primary" />
@@ -145,7 +148,6 @@ export default function Home() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <ExistingRoomsList />
         </div>
       </div>
     </main>

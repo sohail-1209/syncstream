@@ -137,9 +137,9 @@ export function ExistingRoomsList() {
     <>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-            <Button size="lg" variant="secondary" className="font-bold text-lg px-8 py-6">
-            <Users className="mr-2 h-6 w-6" />
-            View Rooms
+            <Button variant="outline">
+              <Users className="mr-2 h-4 w-4" />
+              View Rooms
             </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
