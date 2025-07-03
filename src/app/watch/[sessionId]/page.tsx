@@ -23,8 +23,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import LiveKitStage from "@/components/watch-party/livekit-stage";
 import { cn } from "@/lib/utils";
-import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant, useIsMuted } from "@livekit/components-react";
-import { Track, DisconnectReason } from "livekit-client";
+import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react";
+import { DisconnectReason } from "livekit-client";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
@@ -32,7 +32,7 @@ type PlaybackState = {
   isPlaying: boolean;
   seekTime: number;
   updatedBy: string;
-  timestamp: Timestamp | number;
+  timestamp: number;
 } | null;
 
 
@@ -112,7 +112,16 @@ function WatchPartyContent({
             const data = doc.data();
             setActiveSharer(data?.activeSharer ?? null);
             setVideoSource(data?.videoSource ?? null);
-            setPlaybackState(data?.playbackState ?? null);
+            
+            const remotePlaybackState = data?.playbackState || null;
+            if (remotePlaybackState && remotePlaybackState.timestamp && typeof remotePlaybackState.timestamp.toMillis === 'function') {
+                 setPlaybackState({
+                     ...remotePlaybackState,
+                     timestamp: remotePlaybackState.timestamp.toMillis()
+                 });
+            } else {
+                setPlaybackState(remotePlaybackState);
+            }
         });
         return () => unsub();
     }, [sessionId]);
