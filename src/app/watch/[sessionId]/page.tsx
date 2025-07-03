@@ -2,7 +2,7 @@
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -51,6 +51,8 @@ export default function WatchPartyPage() {
     const [activeSharer, setActiveSharer] = useState<string | null>(null);
     const [livekitToken, setLivekitToken] = useState<string>('');
     const [isTogglingShare, startShareToggleTransition] = useTransition();
+
+    const videoPlayerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const checkSession = async () => {
@@ -215,6 +217,21 @@ export default function WatchPartyPage() {
         });
     };
 
+    const handleFullscreen = () => {
+        if (videoPlayerRef.current) {
+            const element = videoPlayerRef.current as any;
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) { /* Firefox */
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) { /* IE/Edge */
+                element.msRequestFullscreen();
+            }
+        }
+    };
+
     if (authStatus === 'checking') {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -313,6 +330,16 @@ export default function WatchPartyPage() {
                                 </PopoverContent>
                             </Popover>
                         )}
+                         <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full"
+                            onClick={handleFullscreen}
+                            aria-label="Go Fullscreen"
+                        >
+                            <Maximize className="h-4 w-4" />
+                            <span className="sr-only">Go Fullscreen</span>
+                        </Button>
                     </div>
                 </div>
 
@@ -395,7 +422,7 @@ export default function WatchPartyPage() {
                 </div>
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
-                <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
+                <div ref={videoPlayerRef} className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
                    {activeSharer && livekitToken ? (
                         <LiveKitStage token={livekitToken} roomName={params.sessionId} sharerId={activeSharer}/>
                    ) : (

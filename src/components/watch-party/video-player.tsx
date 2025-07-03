@@ -1,13 +1,13 @@
+
 'use client';
 
 import { Card } from "@/components/ui/card";
 import EmojiBar from "./emoji-bar";
-import { Film, AlertTriangle, Maximize } from "lucide-react";
+import { Film, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import ReactPlayer from 'react-player';
-import { Button } from "@/components/ui/button";
 
 export default function VideoPlayer({ 
   videoSource,
@@ -17,7 +17,6 @@ export default function VideoPlayer({
   const { toast } = useToast();
   const [urlError, setUrlError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const playerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -37,22 +36,6 @@ export default function VideoPlayer({
       variant: "destructive",
       duration: 8000,
     });
-  };
-
-  const handleFullscreen = () => {
-    if (playerRef.current) {
-        // The type assertion is needed because the TS definitions for vendor prefixes are not standard
-        const element = playerRef.current as any;
-        if (element.requestFullscreen) {
-            element.requestFullscreen();
-        } else if (element.mozRequestFullScreen) { /* Firefox */
-            element.mozRequestFullScreen();
-        } else if (element.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-            element.webkitRequestFullscreen();
-        } else if (element.msRequestFullscreen) { /* IE/Edge */
-            element.msRequestFullscreen();
-        }
-    }
   };
 
   const renderPlaceholder = () => {
@@ -76,7 +59,7 @@ export default function VideoPlayer({
   }
   
   return (
-    <Card ref={playerRef} className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
+    <Card className="w-full aspect-video lg:h-full lg:aspect-auto bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
       <div className="relative flex-1 bg-black group">
         {isMounted && videoSource && !urlError ? (
           <>
@@ -101,16 +84,6 @@ export default function VideoPlayer({
         ) : (
            renderPlaceholder()
         )}
-        <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute top-4 right-4 text-white hover:bg-white/20 hover:text-white z-30 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={handleFullscreen}
-            aria-label="Go Fullscreen"
-        >
-            <Maximize className="h-6 w-6" />
-            <span className="sr-only">Go Fullscreen</span>
-        </Button>
       </div>
     </Card>
   );
