@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
@@ -10,7 +9,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -52,6 +51,8 @@ export default function WatchPartyPage() {
     const [livekitToken, setLivekitToken] = useState<string>('');
     const [isTogglingShare, startShareToggleTransition] = useTransition();
 
+    // Fullscreen state
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const videoPlayerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -132,6 +133,14 @@ export default function WatchPartyPage() {
         });
         return () => unsub();
     }, [params.sessionId, authStatus, activeSharer]);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
 
     const handleSetVideo = () => {
@@ -217,20 +226,24 @@ export default function WatchPartyPage() {
         });
     };
 
-    const handleFullscreen = () => {
-        if (videoPlayerRef.current) {
-            const element = videoPlayerRef.current as any;
-            if (element.requestFullscreen) {
-                element.requestFullscreen();
-            } else if (element.mozRequestFullScreen) { /* Firefox */
-                element.mozRequestFullScreen();
-            } else if (element.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-                element.webkitRequestFullscreen();
-            } else if (element.msRequestFullscreen) { /* IE/Edge */
-                element.msRequestFullscreen();
+    const toggleFullscreen = () => {
+        if (!videoPlayerRef.current) return;
+
+        if (!document.fullscreenElement) {
+            videoPlayerRef.current.requestFullscreen().catch(err => {
+                toast({
+                    variant: 'destructive',
+                    title: 'Fullscreen Error',
+                    description: `Could not enter fullscreen mode: ${err.message}`
+                });
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
             }
         }
     };
+
 
     if (authStatus === 'checking') {
         return (
@@ -334,11 +347,11 @@ export default function WatchPartyPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-full"
-                            onClick={handleFullscreen}
-                            aria-label="Go Fullscreen"
+                            onClick={toggleFullscreen}
+                            aria-label={isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
                         >
-                            <Maximize className="h-4 w-4" />
-                            <span className="sr-only">Go Fullscreen</span>
+                            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                            <span className="sr-only">{isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
                         </Button>
                     </div>
                 </div>
