@@ -10,11 +10,11 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
-import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPassword, setScreenSharer, getLiveKitToken, setVideoSourceForSession, updatePlaybackState } from "@/app/actions";
+import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPassword, setScreenSharer, getLiveKitToken, setVideoSourceForSession, updatePlaybackState, claimHost } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { useLocalUser, type LocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
@@ -39,6 +39,7 @@ type PlaybackState = {
 function WatchPartyContent({
     sessionId,
     initialHasPassword,
+    initialHostId,
     initialActiveSharer,
     initialVideoSource,
     initialPlaybackState,
@@ -46,6 +47,7 @@ function WatchPartyContent({
 }: {
     sessionId: string,
     initialHasPassword: boolean,
+    initialHostId: string | null,
     initialActiveSharer: string | null,
     initialVideoSource: ProcessVideoUrlOutput | null,
     initialPlaybackState: PlaybackState,
@@ -69,7 +71,7 @@ function WatchPartyContent({
     const [activeSharer, setActiveSharer] = useState<string | null>(initialActiveSharer);
     const [isTogglingShare, startShareToggleTransition] = useTransition();
     
-    const [hostId, setHostId] = useState<string | null>(null);
+    const [hostId, setHostId] = useState<string | null>(initialHostId);
 
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -80,6 +82,12 @@ function WatchPartyContent({
     const isMicMuted = !isMicrophoneEnabled;
     const amSharing = activeSharer === user?.id;
     const isHost = user?.id === hostId;
+
+    // Host control dialog state
+    const [isHostPromptOpen, setIsHostPromptOpen] = useState(false);
+    const [hostPassword, setHostPassword] = useState('');
+    const [isClaimingHost, startClaimHostTransition] = useTransition();
+
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -108,11 +116,12 @@ function WatchPartyContent({
     }, [user, sessionId]);
 
 
-    // Listen for session changes (sharer, video, playback)
+    // Listen for session changes (sharer, video, playback, host)
     useEffect(() => {
         const sessionRef = doc(db, 'sessions', sessionId);
         const unsub = onSnapshot(sessionRef, (doc) => {
             const data = doc.data();
+            setHostId(data?.hostId ?? null);
             setActiveSharer(data?.activeSharer ?? null);
             setVideoSource(data?.videoSource ?? null);
             
@@ -126,24 +135,6 @@ function WatchPartyContent({
                 setPlaybackState(remotePlaybackState);
             }
         });
-        return () => unsub();
-    }, [sessionId]);
-
-    // Determine the host by finding the participant who has been in the room the longest
-    useEffect(() => {
-        if (!sessionId) return;
-        const participantsRef = collection(db, 'sessions', sessionId, 'participants');
-        const q = query(participantsRef, orderBy('lastSeen', 'asc'), limit(1));
-
-        const unsub = onSnapshot(q, (snapshot) => {
-            if (!snapshot.empty) {
-                const hostDoc = snapshot.docs[0];
-                setHostId(hostDoc.id);
-            } else {
-                setHostId(null);
-            }
-        });
-
         return () => unsub();
     }, [sessionId]);
     
@@ -263,6 +254,47 @@ function WatchPartyContent({
         await updatePlaybackState(sessionId, user.id, newState);
     }, [user, sessionId, isHost]);
 
+    const handleClaimHost = () => {
+        if (!user) return;
+        startClaimHostTransition(async () => {
+            const result = await claimHost(sessionId, user.id, hostPassword);
+            if (result.error) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Failed to update host',
+                    description: result.error,
+                });
+            } else {
+                toast({
+                    title: 'Host Updated',
+                    description: result.newHostId === user.id ? 'You are now the host.' : 'You are no longer the host.',
+                });
+            }
+            setIsHostPromptOpen(false);
+            setHostPassword('');
+        });
+    };
+
+    const onHostButtonClick = () => {
+        if (hasPassword) {
+            setIsHostPromptOpen(true);
+        } else {
+            startClaimHostTransition(async () => {
+                if (!user) return;
+                const result = await claimHost(sessionId, user.id);
+                if (result.error) {
+                    toast({ variant: 'destructive', title: 'Failed to update host', description: result.error });
+                } else {
+                     toast({
+                        title: 'Host Updated',
+                        description: result.newHostId === user.id ? 'You are now the host.' : 'You are no longer the host.',
+                    });
+                }
+            });
+        }
+    };
+
+
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
             <header className="relative flex items-center justify-between px-4 py-2 border-b z-50">
@@ -317,6 +349,17 @@ function WatchPartyContent({
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <Button
+                        variant={isHost ? 'default' : 'outline'}
+                        size="icon"
+                        onClick={onHostButtonClick}
+                        disabled={isClaimingHost}
+                        className="h-9 w-9"
+                    >
+                        {isClaimingHost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
+                        <span className="sr-only">{isHost ? 'Abdicate Host' : 'Become Host'}</span>
+                    </Button>
+                    
                     <RecommendationsModal>
                         <Button variant="outline">
                             <Wand2 className="h-4 w-4 mr-2" />
@@ -428,9 +471,36 @@ function WatchPartyContent({
                     "md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0",
                     !isSidebarOpen && "hidden"
                 )}>
-                    <Sidebar sessionId={sessionId} user={user} />
+                    <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
                 </div>
             </main>
+            <Dialog open={isHostPromptOpen} onOpenChange={setIsHostPromptOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Host Control</DialogTitle>
+                        <DialogDescription>
+                           Enter the room password to claim or abdicate the host role.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-4">
+                        <Label htmlFor="host-password">Password</Label>
+                        <Input
+                            id="host-password"
+                            type="password"
+                            value={hostPassword}
+                            onChange={(e) => setHostPassword(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleClaimHost()}
+                            disabled={isClaimingHost}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsHostPromptOpen(false)}>Cancel</Button>
+                        <Button onClick={handleClaimHost} disabled={isClaimingHost}>
+                            {isClaimingHost ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Crown className="mr-2 h-4 w-4" />} Confirm
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -448,7 +518,7 @@ export default function WatchPartyPage() {
     const [passwordInput, setPasswordInput] = useState('');
     const [isVerifying, startVerifyTransition] = useTransition();
 
-    const [sessionDetails, setSessionDetails] = useState<{ hasPassword: boolean; activeSharer: string | null; videoSource: ProcessVideoUrlOutput | null; playbackState: PlaybackState; } | null>(null);
+    const [sessionDetails, setSessionDetails] = useState<{ hasPassword: boolean; hostId: string | null; activeSharer: string | null; videoSource: ProcessVideoUrlOutput | null; playbackState: PlaybackState; } | null>(null);
     const [livekitToken, setLivekitToken] = useState<string>('');
 
     useEffect(() => {
@@ -585,6 +655,7 @@ export default function WatchPartyPage() {
                 <WatchPartyContent 
                     sessionId={params.sessionId}
                     initialHasPassword={sessionDetails.hasPassword}
+                    initialHostId={sessionDetails.hostId}
                     initialActiveSharer={sessionDetails.activeSharer}
                     initialVideoSource={sessionDetails.videoSource}
                     initialPlaybackState={sessionDetails.playbackState}

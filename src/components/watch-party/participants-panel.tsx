@@ -1,19 +1,18 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Crown, Mic, MicOff, User, Loader2 } from "lucide-react";
+import { Crown, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { LocalUser } from "@/hooks/use-local-user";
+import { cn } from "@/lib/utils";
 
-interface Participant extends LocalUser {
-    isHost?: boolean;
-    isMuted?: boolean;
-}
+interface Participant extends LocalUser {}
 
-export default function ParticipantsPanel({ sessionId }: { sessionId: string }) {
+export default function ParticipantsPanel({ sessionId, hostId }: { sessionId: string; hostId: string | null }) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -58,8 +57,7 @@ export default function ParticipantsPanel({ sessionId }: { sessionId: string }) 
                     <span className="font-medium">{p.name}</span>
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
-                    {/* Future functionality: {p.isHost && <Crown className="h-4 w-4 text-amber-400" />} */}
-                    {/* Future functionality: {p.isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-green-400" />} */}
+                    {p.id === hostId && <Crown className="h-5 w-5 text-amber-400" />}
                 </div>
             </div>
         ))}

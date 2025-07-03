@@ -56,8 +56,9 @@ export async function createRoomWithPassword(password: string | null) {
         const newRoomId = Math.random().toString(36).substring(2, 8);
         const sessionRef = doc(db, 'sessions', newRoomId);
 
-        const data: { password?: string, createdAt: any } = {
-            createdAt: serverTimestamp()
+        const data: { password?: string, createdAt: any, hostId: string | null } = {
+            createdAt: serverTimestamp(),
+            hostId: null,
         };
 
         if (password && password.trim() !== '') {
@@ -99,6 +100,7 @@ export async function getSessionDetails(sessionId: string) {
         return { 
             data: { 
                 hasPassword, 
+                hostId: sessionData?.hostId || null,
                 activeSharer: sessionData?.activeSharer || null,
                 videoSource: sessionData?.videoSource || null,
                 playbackState: playbackState
@@ -285,6 +287,45 @@ export async function updatePlaybackState(sessionId: string, userId: string, sta
     } catch (error) {
         console.error("Failed to update playback state:", error);
         return { success: false, error: "Failed to sync video state." };
+    }
+}
+
+export async function claimHost(sessionId: string, userId: string, password?: string) {
+    try {
+        const sessionRef = doc(db, 'sessions', sessionId);
+        const sessionSnap = await getDoc(sessionRef);
+
+        if (!sessionSnap.exists()) {
+            return { success: false, error: "Room not found.", newHostId: null };
+        }
+
+        const sessionData = sessionSnap.data();
+        const roomPassword = sessionData?.password;
+
+        if (roomPassword) {
+            if (!password || password !== roomPassword) {
+                return { success: false, error: "Incorrect password.", newHostId: sessionData?.hostId || null };
+            }
+        }
+        
+        const currentHostId = sessionData?.hostId;
+        let newHostId: string | null;
+
+        if (currentHostId === userId) {
+            // User is abdicating host role
+            newHostId = null;
+        } else {
+            // User is claiming host role
+            newHostId = userId;
+        }
+        
+        await updateDoc(sessionRef, { hostId: newHostId });
+
+        return { success: true, error: null, newHostId };
+
+    } catch (error) {
+        console.error("Failed to claim host:", error);
+        return { success: false, error: "An error occurred while updating the host.", newHostId: null };
     }
 }
     
