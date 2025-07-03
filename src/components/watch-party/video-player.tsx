@@ -11,10 +11,12 @@ import ReactPlayer from 'react-player';
 
 export default function VideoPlayer({ 
   videoSource, 
-  screenStream 
+  screenStream,
+  isBroadcaster
 }: { 
   videoSource: ProcessVideoUrlOutput | null;
   screenStream: MediaStream | null;
+  isBroadcaster: boolean;
 }) {
   const { toast } = useToast();
   const [urlError, setUrlError] = useState(false);
@@ -75,7 +77,7 @@ export default function VideoPlayer({
           ref={videoRef} 
           className={`w-full h-full object-contain ${screenStream ? '' : 'hidden'}`} 
           autoPlay 
-          muted 
+          muted={isBroadcaster} 
           playsInline 
         />
         

@@ -213,6 +213,7 @@ export default function WatchPartyPage() {
         else {
             const pc = new RTCPeerConnection(rtcConfig);
             peerConnections.current[broadcasterId] = pc;
+            const candidateQueue = useRef<RTCIceCandidate[]>([]);
     
             pc.onicecandidate = e => {
                 if(e.candidate) {
@@ -222,12 +223,15 @@ export default function WatchPartyPage() {
             
             const candidatesQuery = query(collection(db, `sessions/${params.sessionId}/iceCandidates`), where("to", "==", localUser.id), where("from", "==", broadcasterId));
             const unsubCandidates = onSnapshot(candidatesQuery, (snap) => {
-                snap.docChanges().forEach(async c => {
-                    if (c.type === 'added') {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.type === 'added') {
+                        const candidate = new RTCIceCandidate(change.doc.data().candidate);
                         if (pc.remoteDescription) {
-                            await pc.addIceCandidate(new RTCIceCandidate(c.doc.data().candidate));
+                            await pc.addIceCandidate(candidate);
+                        } else {
+                            candidateQueue.current.push(candidate);
                         }
-                        await deleteDoc(c.doc.ref);
+                        await deleteDoc(change.doc.ref);
                     }
                 });
             });
@@ -245,6 +249,11 @@ export default function WatchPartyPage() {
             const unsubAnswer = onSnapshot(answerRef, async (docSnap) => {
                 if (docSnap.exists() && docSnap.data().from === broadcasterId && !pc.currentRemoteDescription) {
                     await pc.setRemoteDescription(new RTCSessionDescription(docSnap.data().answer));
+
+                    // Process any queued candidates
+                    candidateQueue.current.forEach(candidate => pc.addIceCandidate(candidate));
+                    candidateQueue.current = [];
+
                     await deleteDoc(docSnap.ref);
                 }
             });
@@ -545,7 +554,7 @@ export default function WatchPartyPage() {
             </header>
             <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
-                    <VideoPlayer key={broadcasterId} videoSource={isSharing ? null : videoSource} screenStream={screenStream} />
+                    <VideoPlayer key={broadcasterId} videoSource={isSharing ? null : videoSource} screenStream={screenStream} isBroadcaster={amBroadcaster} />
                 </div>
                 <div className="md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0">
                     <Sidebar sessionId={params.sessionId} user={localUser} />
