@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ExistingRoomsList } from '@/components/home/existing-rooms-list';
+
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState('');
@@ -28,12 +30,8 @@ export default function Home() {
     }
   };
 
-  const createNewRoomId = () => {
-    return Math.random().toString(36).substring(2, 8);
-  }
-
   const handleCreateRoom = () => {
-    const newRoomId = createNewRoomId();
+    const newRoomId = Math.random().toString(36).substring(2, 8);
     router.push(`/watch/${newRoomId}`);
   };
 
@@ -59,8 +57,8 @@ export default function Home() {
           <Dialog>
             <DialogTrigger asChild>
               <Button size="lg" variant="outline" className="font-bold text-lg px-8 py-6">
-                <Users className="mr-2 h-6 w-6" />
-                Join a Session
+                <ArrowRight className="mr-2 h-6 w-6" />
+                Join by Code
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
@@ -92,6 +90,7 @@ export default function Home() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          <ExistingRoomsList />
         </div>
       </div>
     </main>
