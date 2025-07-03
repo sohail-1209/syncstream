@@ -162,7 +162,7 @@ export default function WatchPartyPage() {
                         await pc.setRemoteDescription(new RTCSessionDescription(offer));
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
-                        await setDoc(doc(db, `sessions/${params.sessionId}/answers`, viewerId), { from: localUser.id, answer: answer.toJSON() });
+                        await setDoc(doc(db, `sessions/${params.sessionId}/answers`, viewerId), { from: localUser.id, answer: answer });
                     }
                 });
             });
@@ -191,7 +191,7 @@ export default function WatchPartyPage() {
             const createOffer = async () => {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
-                await setDoc(doc(db, `sessions/${params.sessionId}/offers`, localUser.id), offer.toJSON());
+                await setDoc(doc(db, `sessions/${params.sessionId}/offers`, localUser.id), offer);
             };
             createOffer();
     
