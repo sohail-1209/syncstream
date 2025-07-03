@@ -81,18 +81,22 @@ export default function VideoPlayer({
     }
 
     return (
-      <div ref={placeholderRef} className="relative w-full h-full bg-black/50">
-        <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 h-10 w-10 text-white hover:text-white hover:bg-white/10 z-50"
-            onClick={togglePlaceholderFullscreen}
-            aria-label={isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
-        >
-            {isPlaceholderFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-            <span className="sr-only">{isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
-        </Button>
-        <div className="w-full h-full flex flex-col items-center justify-center text-center text-muted-foreground p-4">
+      <div ref={placeholderRef} className="w-full h-full bg-black/50 flex flex-col">
+        {/* Top bar for the button */}
+        <div className="w-full flex justify-end p-2">
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-white hover:text-white hover:bg-white/10"
+                onClick={togglePlaceholderFullscreen}
+                aria-label={isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
+            >
+                {isPlaceholderFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+                <span className="sr-only">{isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
+            </Button>
+        </div>
+        {/* Main content, takes remaining space */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground p-4 -mt-14"> {/* Negative margin to re-center content */}
             <Icon className={`h-16 w-16 mb-4 ${urlError ? 'text-destructive' : ''}`} />
             <h2 className="text-2xl font-bold">{title}</h2>
             <p className="text-lg max-w-xl">{description}</p>
