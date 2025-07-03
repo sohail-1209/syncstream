@@ -435,7 +435,7 @@ export default function WatchPartyPage() {
                     </Button>
                 </div>
             </header>
-            <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4 overflow-hidden">
+            <main className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-4 p-4">
                 <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
                    {activeSharer && livekitToken ? (
                         <LiveKitStage token={livekitToken} roomName={params.sessionId} sharerId={activeSharer}/>
