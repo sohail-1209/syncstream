@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -101,7 +102,7 @@ function CustomVideoConference() {
             <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 text-white hover:text-white hover:bg-white/10"
+                className="relative z-50 h-10 w-10 text-white hover:text-white hover:bg-white/10"
                 onClick={togglePlaceholderFullscreen}
                 aria-label={isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
             >
