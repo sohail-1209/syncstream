@@ -42,30 +42,32 @@ const prompt = ai.definePrompt({
   name: 'processVideoUrlPrompt',
   input: {schema: ProcessVideoUrlInputSchema},
   output: {schema: ProcessVideoUrlOutputSchema},
-  prompt: `You are a URL correction and video platform identification expert. You are an expert at identifying direct video links from various URLs, even when they are not obvious.
+  prompt: `You are an expert system that analyzes URLs to identify video content.
+Your task is to correct the URL if needed, and determine the video platform.
 
-Given the following URL, please perform the following tasks:
-1.  Correct any obvious typos or formatting errors in the URL.
-2.  Identify the video platform. The platform can be 'youtube', 'vimeo', 'direct', or 'unknown'.
-3.  A 'direct' link is a URL that directly points to a video file (e.g., .mp4, .webm) or a streaming manifest (e.g., .m3u8). You should also be very generous in identifying direct links. URLs from known video CDNs or that have patterns indicating a video stream (like '/video/', '/embed/', or query parameters like 'stream', 'hls', 'dash') should be classified as 'direct', even if they don't have a file extension.
-4.  If the platform is 'youtube' or 'vimeo', extract the unique video ID from the URL. For 'direct' links, the videoId should be null.
-5.  Links to social media posts (like Instagram, Facebook, TikTok) that contain videos should be classified as 'unknown' as they cannot be embedded directly.
-6.  Only classify a URL as 'unknown' if it is clearly a link to a generic webpage (like a news article, a blog post ending in .html, or a social media page) that is unlikely to be embeddable. If there's any ambiguity, lean towards classifying it as 'direct' to at least attempt playback.
-7.  If you cannot determine the platform after careful analysis, set it to 'unknown'.
-8.  Return the result in the specified format.
+**CRITICAL INSTRUCTIONS:**
+- The 'platform' field MUST be one of the following exact lowercase strings: 'youtube', 'vimeo', 'direct', 'unknown'.
+- For 'direct' links, the 'videoId' field MUST be null.
+- For 'unknown' links, the 'videoId' field MUST be null.
+- For 'youtube' or 'vimeo', you MUST extract the video ID.
+- Be generous in identifying 'direct' links. URLs from video CDNs or with streaming terms (like .m3u8, hls, dash) should be 'direct'.
+- Social media links (Instagram, Facebook, etc.) are 'unknown'.
+- Correct any obvious typos in the URL.
 
-Examples:
-- Input: "htps://www.youtub.com/w?v=dQw4w9WgXcQ" -> platform: 'youtube', videoId: 'dQw4w9WgXcQ', correctedUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-- Input: "vimeo com/12345678" -> platform: 'vimeo', videoId: '12345678', correctedUrl: "https://vimeo.com/12345678"
-- Input: "https://example.com/my_awesome_video.mp4" -> platform: 'direct', videoId: null, correctedUrl: "https://example.com/my_awesome_video.mp4"
-- Input: "https://example.com/stream/playlist.m3u8" -> platform: 'direct', videoId: null, correctedUrl: "https://example.com/stream/playlist.m3u8"
-- Input: "https://ww7.vcdnlare.com/v/LWTpVmvwsWHiyEN?sid=6191&t=hls" -> platform: 'direct', videoId: null, correctedUrl: "https://ww7.vcdnlare.com/v/LWTpVmvwsWHiyEN?sid=6191&t=hls"
-- Input: "https://some-video-cdn.com/videos/12345/stream?quality=1080p" -> platform: 'direct', videoId: null, correctedUrl: "https://some-video-cdn.com/videos/12345/stream?quality=1080p"
-- Input: "https://www.instagram.com/p/Cxyz123/" -> platform: 'unknown', videoId: null, correctedUrl: "https://www.instagram.com/p/Cxyz123/"
-- Input: "https://some-site.com/movie-title-watch-online.html" -> platform: 'unknown', videoId: null, correctedUrl: "https://some-site.com/movie-title-watch-online.html"
-- Input: "a random string" -> platform: 'unknown', videoId: null, correctedUrl: "a random string"
+**EXAMPLES:**
+- Input: "htps://www.youtub.com/w?v=dQw4w9WgXcQ" -> Output: { platform: 'youtube', videoId: 'dQw4w9WgXcQ', correctedUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }
+- Input: "vimeo com/12345678" -> Output: { platform: 'vimeo', videoId: '12345678', correctedUrl: "https://vimeo.com/12345678" }
+- Input: "https://example.com/my_awesome_video.mp4" -> Output: { platform: 'direct', videoId: null, correctedUrl: "https://example.com/my_awesome_video.mp4" }
+- Input: "https://ww7.vcdnlare.com/v/LWTpVmvwsWHiyEN?sid=6191&t=hls" -> Output: { platform: 'direct', videoId: null, correctedUrl: "https://ww7.vcdnlare.com/v/LWTpVmvwsWHiyEN?sid=6191&t=hls" }
+- Input: "https://www.instagram.com/p/Cxyz123/" -> Output: { platform: 'unknown', videoId: null, correctedUrl: "https://www.instagram.com/p/Cxyz123/" }
+- Input: "a random string" -> Output: { platform: 'unknown', videoId: null, correctedUrl: "a random string" }
 
-User provided URL: {{{url}}}`,
+**TASK:**
+Process the following user-provided URL:
+\`\`\`
+{{{url}}}
+\`\`\`
+`,
 });
 
 const processVideoUrlFlow = ai.defineFlow(
