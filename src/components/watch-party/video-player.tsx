@@ -9,26 +9,110 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useRef } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import ReactPlayer from 'react-player';
+import type { LocalUser } from "@/hooks/use-local-user";
+import type { Timestamp } from "firebase/firestore";
+
+type PlaybackState = {
+  isPlaying: boolean;
+  seekTime: number;
+  updatedBy: string;
+  timestamp: Timestamp;
+} | null;
 
 export default function VideoPlayer({ 
   videoSource,
+  playbackState,
+  onPlaybackChange,
+  user
 }: { 
   videoSource: ProcessVideoUrlOutput | null;
+  playbackState: PlaybackState;
+  onPlaybackChange: (newState: { isPlaying: boolean, seekTime: number }) => void;
+  user: LocalUser | null;
 }) {
   const { toast } = useToast();
+  const playerRef = useRef<ReactPlayer>(null);
+
+  const [localIsPlaying, setLocalIsPlaying] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  
   const [urlError, setUrlError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isPlaceholderFullscreen, setIsPlaceholderFullscreen] = useState(false);
   const placeholderRef = useRef<HTMLDivElement>(null);
-
+  
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
+    // When video source changes, reset states
     setUrlError(false);
-  }, [videoSource]);
+    setIsReady(false);
+    if (playbackState) {
+        setLocalIsPlaying(playbackState.isPlaying);
+    } else {
+        setLocalIsPlaying(false);
+    }
+  }, [videoSource, playbackState]);
 
+
+  // Sync remote state to local player
+  useEffect(() => {
+    if (!playbackState || !isReady || !playerRef.current || !user) {
+        return;
+    }
+
+    // If the state was updated by the current user, ignore it to prevent loops
+    if (playbackState.updatedBy === user.id) {
+        return;
+    }
+    
+    // Sync playing status
+    if (localIsPlaying !== playbackState.isPlaying) {
+        setLocalIsPlaying(playbackState.isPlaying);
+    }
+
+    // Sync seek time, with a tolerance to prevent seeking on minor differences
+    const localTime = playerRef.current.getCurrentTime() || 0;
+    if (Math.abs(localTime - playbackState.seekTime) > 2) { 
+        playerRef.current.seekTo(playbackState.seekTime, 'seconds');
+    }
+
+  }, [playbackState, isReady, user, localIsPlaying]);
+
+
+  const handleReady = () => {
+    setIsReady(true);
+    // When a new video is loaded, seek to the last known position
+    if (playbackState && playerRef.current) {
+        playerRef.current.seekTo(playbackState.seekTime, 'seconds');
+        setLocalIsPlaying(playbackState.isPlaying);
+    }
+  };
+
+  const handlePlay = () => {
+    if (!localIsPlaying) {
+      setLocalIsPlaying(true);
+      onPlaybackChange({ isPlaying: true, seekTime: playerRef.current?.getCurrentTime() || 0 });
+    }
+  };
+
+  const handlePause = () => {
+    if (localIsPlaying) {
+      setLocalIsPlaying(false);
+      onPlaybackChange({ isPlaying: false, seekTime: playerRef.current?.getCurrentTime() || 0 });
+    }
+  };
+
+  const handleSeek = (seconds: number) => {
+    // This is fired when user drags the progress bar.
+    // We update our local state to feel instant, then broadcast.
+    setLocalIsPlaying(localIsPlaying); // to be sure
+    playerRef.current?.seekTo(seconds, 'seconds');
+    onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
+  };
+  
   useEffect(() => {
     const handleFullscreenChange = () => {
         if (document.fullscreenElement === placeholderRef.current) {
@@ -109,12 +193,17 @@ export default function VideoPlayer({
         {isMounted && videoSource && !urlError ? (
           <>
             <ReactPlayer
+              ref={playerRef}
               key={videoSource.correctedUrl}
               url={videoSource.correctedUrl}
-              playing
+              playing={localIsPlaying}
               controls
               width="100%"
               height="100%"
+              onReady={handleReady}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onSeek={handleSeek}
               onError={handleUrlError}
               config={{
                 file: {

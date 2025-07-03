@@ -14,11 +14,11 @@ import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, Arr
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
-import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPassword, setScreenSharer, getLiveKitToken, setVideoSourceForSession } from "@/app/actions";
+import { processAndGetVideoUrl, getSessionDetails, verifyPassword, getSessionPassword, setScreenSharer, getLiveKitToken, setVideoSourceForSession, updatePlaybackState } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { useLocalUser, type LocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, onSnapshot, addDoc, type Timestamp } from "firebase/firestore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import LiveKitStage from "@/components/watch-party/livekit-stage";
@@ -28,18 +28,27 @@ import { Track, DisconnectReason } from "livekit-client";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
+type PlaybackState = {
+  isPlaying: boolean;
+  seekTime: number;
+  updatedBy: string;
+  timestamp: Timestamp;
+} | null;
+
 
 function WatchPartyContent({
     sessionId,
     initialHasPassword,
     initialActiveSharer,
     initialVideoSource,
+    initialPlaybackState,
     user
 }: {
     sessionId: string,
     initialHasPassword: boolean,
     initialActiveSharer: string | null,
     initialVideoSource: ProcessVideoUrlOutput | null,
+    initialPlaybackState: PlaybackState,
     user: LocalUser
 }) {
     const router = useRouter();
@@ -48,6 +57,7 @@ function WatchPartyContent({
 
     const [inviteLink, setInviteLink] = useState('');
     const [videoSource, setVideoSource] = useState<ProcessVideoUrlOutput | null>(initialVideoSource);
+    const [playbackState, setPlaybackState] = useState<PlaybackState>(initialPlaybackState);
     const [tempUrl, setTempUrl] = useState('');
     const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
     const [urlError, setUrlError] = useState<string | null>(null);
@@ -95,13 +105,14 @@ function WatchPartyContent({
     }, [user, sessionId]);
 
 
-    // Listen for session changes (sharer & video)
+    // Listen for session changes (sharer, video, playback)
     useEffect(() => {
         const sessionRef = doc(db, 'sessions', sessionId);
         const unsub = onSnapshot(sessionRef, (doc) => {
             const data = doc.data();
             setActiveSharer(data?.activeSharer ?? null);
             setVideoSource(data?.videoSource ?? null);
+            setPlaybackState(data?.playbackState ?? null);
         });
         return () => unsub();
     }, [sessionId]);
@@ -214,6 +225,11 @@ function WatchPartyContent({
                 document.exitFullscreen();
             }
         }
+    };
+
+    const handlePlaybackChange = async (newState: { isPlaying: boolean; seekTime: number }) => {
+        if (!user) return;
+        await updatePlaybackState(sessionId, user.id, newState);
     };
 
     return (
@@ -368,7 +384,12 @@ function WatchPartyContent({
                    {activeSharer ? (
                         <LiveKitStage sharerId={activeSharer}/>
                    ) : (
-                        <VideoPlayer videoSource={videoSource} />
+                        <VideoPlayer 
+                            videoSource={videoSource}
+                            playbackState={playbackState}
+                            onPlaybackChange={handlePlaybackChange}
+                            user={user}
+                        />
                    )}
                 </div>
                 <div className={cn(
@@ -395,7 +416,7 @@ export default function WatchPartyPage() {
     const [passwordInput, setPasswordInput] = useState('');
     const [isVerifying, startVerifyTransition] = useTransition();
 
-    const [sessionDetails, setSessionDetails] = useState<{ hasPassword: boolean; activeSharer: string | null; videoSource: ProcessVideoUrlOutput | null; } | null>(null);
+    const [sessionDetails, setSessionDetails] = useState<{ hasPassword: boolean; activeSharer: string | null; videoSource: ProcessVideoUrlOutput | null; playbackState: PlaybackState; } | null>(null);
     const [livekitToken, setLivekitToken] = useState<string>('');
 
     useEffect(() => {
@@ -534,6 +555,7 @@ export default function WatchPartyPage() {
                     initialHasPassword={sessionDetails.hasPassword}
                     initialActiveSharer={sessionDetails.activeSharer}
                     initialVideoSource={sessionDetails.videoSource}
+                    initialPlaybackState={sessionDetails.playbackState}
                     user={localUser}
                 />
                 <RoomAudioRenderer />

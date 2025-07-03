@@ -3,7 +3,7 @@
 
 import { recommendContent, type RecommendContentInput } from "@/ai/flows/recommend-content";
 import { processVideoUrl, type ProcessVideoUrlInput, type ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
-import { collection, deleteDoc, doc, getDocs, getDoc, setDoc, serverTimestamp, query, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, getDoc, setDoc, serverTimestamp, query, writeBatch, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { AccessToken } from 'livekit-server-sdk';
 
@@ -92,7 +92,8 @@ export async function getSessionDetails(sessionId: string) {
             data: { 
                 hasPassword, 
                 activeSharer: sessionData?.activeSharer || null,
-                videoSource: sessionData?.videoSource || null 
+                videoSource: sessionData?.videoSource || null,
+                playbackState: sessionData?.playbackState || null
             }, 
             error: null 
         };
@@ -227,9 +228,10 @@ export async function getLiveKitToken(roomName: string, participantIdentity: str
 export async function setScreenSharer(sessionId: string, userId: string | null) {
     try {
         const sessionRef = doc(db, 'sessions', sessionId);
-        const updateData: { activeSharer: string | null; videoSource?: any } = { activeSharer: userId };
+        const updateData: { activeSharer: string | null; videoSource?: any, playbackState?: any } = { activeSharer: userId };
         if (userId) {
             updateData.videoSource = null;
+            updateData.playbackState = null;
         }
         await setDoc(sessionRef, updateData, { merge: true });
         return { success: true, error: null };
@@ -242,7 +244,15 @@ export async function setScreenSharer(sessionId: string, userId: string | null) 
 export async function setVideoSourceForSession(sessionId: string, videoSource: ProcessVideoUrlOutput | null) {
     try {
         const sessionRef = doc(db, 'sessions', sessionId);
-        const updateData: { videoSource: ProcessVideoUrlOutput | null; activeSharer?: any } = { videoSource: videoSource };
+        const updateData: { videoSource: ProcessVideoUrlOutput | null; activeSharer?: any, playbackState?: any } = { 
+            videoSource: videoSource,
+            playbackState: {
+                isPlaying: false,
+                seekTime: 0,
+                updatedBy: 'system',
+                timestamp: serverTimestamp()
+            }
+        };
         if (videoSource) {
             updateData.activeSharer = null;
         }
@@ -251,6 +261,22 @@ export async function setVideoSourceForSession(sessionId: string, videoSource: P
     } catch (error) {
         console.error("Failed to set video source:", error);
         return { success: false, error: "Failed to update video source for the session." };
+    }
+}
+
+export async function updatePlaybackState(sessionId: string, userId: string, state: { isPlaying: boolean, seekTime: number }) {
+    try {
+        const sessionRef = doc(db, 'sessions', sessionId);
+        const playbackState = {
+            ...state,
+            updatedBy: userId,
+            timestamp: serverTimestamp()
+        };
+        await updateDoc(sessionRef, { playbackState });
+        return { success: true, error: null };
+    } catch (error) {
+        console.error("Failed to update playback state:", error);
+        return { success: false, error: "Failed to sync video state." };
     }
 }
     
