@@ -7,9 +7,8 @@ import {
   RoomAudioRenderer,
   useRoomContext,
   useTracks,
-  GridLayout,
-  ParticipantTile,
   ControlBar,
+  VideoTrack,
 } from '@livekit/components-react';
 import { useLocalUser } from '@/hooks/use-local-user';
 import { RoomEvent, Track, DisconnectReason, setLogLevel, LogLevel } from 'livekit-client';
@@ -120,9 +119,10 @@ function CustomVideoConference() {
   }
 
   return (
-    <GridLayout tracks={tracks} style={{ height: '100%' }}>
-      <ParticipantTile />
-    </GridLayout>
+     <VideoTrack
+        trackRef={tracks[0]}
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+     />
   );
 }
 
