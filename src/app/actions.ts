@@ -2,7 +2,7 @@
 "use server";
 
 import { recommendContent, type RecommendContentInput } from "@/ai/flows/recommend-content";
-import { processVideoUrl, type ProcessVideoUrlInput } from "@/ai/flows/process-video-url";
+import { processVideoUrl, type ProcessVideoUrlInput, type ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import { collection, deleteDoc, doc, getDocs, getDoc, setDoc, serverTimestamp, query, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { AccessToken } from 'livekit-server-sdk';
@@ -88,7 +88,14 @@ export async function getSessionDetails(sessionId: string) {
         const sessionData = sessionSnap.data();
         const hasPassword = !!sessionData?.password;
 
-        return { data: { hasPassword, activeSharer: sessionData?.activeSharer || null }, error: null };
+        return { 
+            data: { 
+                hasPassword, 
+                activeSharer: sessionData?.activeSharer || null,
+                videoSource: sessionData?.videoSource || null 
+            }, 
+            error: null 
+        };
 
     } catch (error) {
         console.error("Failed to get session details:", error);
@@ -220,11 +227,30 @@ export async function getLiveKitToken(roomName: string, participantIdentity: str
 export async function setScreenSharer(sessionId: string, userId: string | null) {
     try {
         const sessionRef = doc(db, 'sessions', sessionId);
-        await setDoc(sessionRef, { activeSharer: userId }, { merge: true });
+        const updateData: { activeSharer: string | null; videoSource?: any } = { activeSharer: userId };
+        if (userId) {
+            updateData.videoSource = null;
+        }
+        await setDoc(sessionRef, updateData, { merge: true });
         return { success: true, error: null };
     } catch (error) {
         console.error("Failed to set screen sharer:", error);
         return { success: false, error: "Failed to update screen sharer status." };
+    }
+}
+
+export async function setVideoSourceForSession(sessionId: string, videoSource: ProcessVideoUrlOutput | null) {
+    try {
+        const sessionRef = doc(db, 'sessions', sessionId);
+        const updateData: { videoSource: ProcessVideoUrlOutput | null; activeSharer?: any } = { videoSource: videoSource };
+        if (videoSource) {
+            updateData.activeSharer = null;
+        }
+        await setDoc(sessionRef, updateData, { merge: true });
+        return { success: true, error: null };
+    } catch (error) {
+        console.error("Failed to set video source:", error);
+        return { success: false, error: "Failed to update video source for the session." };
     }
 }
     
