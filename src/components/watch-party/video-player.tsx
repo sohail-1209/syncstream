@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card } from "@/components/ui/card";
@@ -68,16 +67,7 @@ export default function VideoPlayer({
     }
 
     return (
-      <div className="relative w-full h-full flex flex-col items-center justify-center text-center text-muted-foreground bg-black/50 p-4">
-        <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute top-4 right-4 text-white hover:bg-white/20 hover:text-white"
-            onClick={handleFullscreen}
-        >
-            <Maximize className="h-6 w-6" />
-            <span className="sr-only">Go Fullscreen</span>
-        </Button>
+      <div className="w-full h-full flex flex-col items-center justify-center text-center text-muted-foreground bg-black/50 p-4">
         <Icon className={`h-16 w-16 mb-4 ${urlError ? 'text-destructive' : ''}`} />
         <h2 className="text-2xl font-bold">{title}</h2>
         <p className="text-lg max-w-xl">{description}</p>
@@ -111,6 +101,16 @@ export default function VideoPlayer({
         ) : (
            renderPlaceholder()
         )}
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            className="absolute top-4 right-4 text-white hover:bg-white/20 hover:text-white z-30 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={handleFullscreen}
+            aria-label="Go Fullscreen"
+        >
+            <Maximize className="h-6 w-6" />
+            <span className="sr-only">Go Fullscreen</span>
+        </Button>
       </div>
     </Card>
   );
