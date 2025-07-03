@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
@@ -9,15 +10,19 @@ import { Logo } from "@/components/icons";
 import VideoPlayer from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
-import { processAndGetVideoUrl } from "@/app/actions";
+import { processAndGetVideoUrl, getSessionDetails, verifyPassword } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
+type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
 
 export default function WatchPartyPage() {
     const params = useParams<{ sessionId: string }>();
@@ -33,6 +38,28 @@ export default function WatchPartyPage() {
     const [urlError, setUrlError] = useState<string | null>(null);
     const localUser = useLocalUser();
 
+    const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
+    const [authError, setAuthError] = useState<string | null>(null);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [isVerifying, startVerifyTransition] = useTransition();
+
+
+    useEffect(() => {
+        const checkPassword = async () => {
+            const result = await getSessionDetails(params.sessionId);
+            if (result.error) {
+                setAuthError(result.error);
+                setAuthStatus('error');
+            } else if (result.data) {
+                if (result.data.hasPassword) {
+                    setAuthStatus('prompt_password');
+                } else {
+                    setAuthStatus('authenticated');
+                }
+            }
+        };
+        checkPassword();
+    }, [params.sessionId]);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -41,13 +68,12 @@ export default function WatchPartyPage() {
     }, [params.sessionId]);
 
     useEffect(() => {
-        if (!localUser || !params.sessionId) return;
+        if (authStatus !== 'authenticated' || !localUser || !params.sessionId) return;
 
         const sessionRef = doc(db, "sessions", params.sessionId);
         const userRef = doc(collection(sessionRef, "participants"), localUser.id);
 
         const setPresence = async () => {
-             // Ensure the session document itself exists with some data
              await setDoc(sessionRef, { updatedAt: serverTimestamp() }, { merge: true });
              await setDoc(userRef, { ...localUser, lastSeen: serverTimestamp() }, { merge: true });
         }
@@ -55,18 +81,13 @@ export default function WatchPartyPage() {
         setPresence();
 
         const interval = setInterval(() => {
-            // Only need to update participant presence in the interval
             setDoc(userRef, { lastSeen: serverTimestamp() }, { merge: true });
-        }, 60 * 1000); // Update every minute
+        }, 60 * 1000);
 
         return () => {
             clearInterval(interval);
-            // In a production app, you'd want a more robust way to handle users
-            // leaving, like using Firebase's Realtime Database presence system
-            // or a Cloud Function to clean up participants who haven't been seen
-            // for a while. For this example, we'll just let them time out.
         };
-    }, [localUser, params.sessionId]);
+    }, [localUser, params.sessionId, authStatus]);
 
     const handleSetVideo = () => {
         if (screenStream) {
@@ -102,7 +123,7 @@ export default function WatchPartyPage() {
             }
 
             const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
-            setVideoSource(null); // Prioritize screen share over URL
+            setVideoSource(null);
             setScreenStream(stream);
 
             stream.getVideoTracks()[0].addEventListener('ended', () => {
@@ -142,6 +163,78 @@ export default function WatchPartyPage() {
     const handleExitRoom = () => {
         router.push('/');
     };
+    
+    const handleVerifyPassword = () => {
+        startVerifyTransition(async () => {
+            setAuthError(null);
+            const result = await verifyPassword(params.sessionId, passwordInput);
+            if (result.error) {
+                setAuthError(result.error);
+            } else if (result.data?.success) {
+                setAuthStatus('authenticated');
+            } else {
+                setAuthError("Incorrect password. Please try again.");
+            }
+        });
+    }
+
+
+    if (authStatus === 'checking') {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
+    }
+    
+    if (authStatus === 'error') {
+         return (
+            <div className="flex h-screen w-full items-center justify-center bg-background text-center p-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-destructive">Error</h1>
+                    <p className="text-muted-foreground">{authError || 'An unknown error occurred.'}</p>
+                    <Button onClick={() => router.push('/')} className="mt-4">Go Home</Button>
+                </div>
+            </div>
+        );
+    }
+    
+    if (authStatus === 'prompt_password') {
+        return (
+             <Dialog open={true} onOpenChange={(isOpen) => !isOpen && router.push('/')}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Password Required</DialogTitle>
+                        <DialogDescription>
+                            This watch party is private. Please enter the password to join.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-4">
+                        <Label htmlFor="join-password">Password</Label>
+                        <Input
+                            id="join-password"
+                            type="password"
+                            placeholder="Enter password"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                            disabled={isVerifying}
+                        />
+                         {authError && <p className="text-xs text-destructive pt-2">{authError}</p>}
+                    </div>
+                    <DialogFooter className="sm:justify-between">
+                         <Button variant="outline" onClick={() => router.push('/')}>
+                            <LogOut className="mr-2 h-4 w-4"/> Leave
+                        </Button>
+                        <Button onClick={handleVerifyPassword} disabled={isVerifying}>
+                            {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} Join Session
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        );
+    }
+
 
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">

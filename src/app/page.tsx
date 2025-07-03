@@ -1,8 +1,8 @@
+
 'use client';
 
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Clapperboard, Users, ArrowRight } from 'lucide-react';
+import { Clapperboard, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import {
   Dialog,
@@ -12,17 +12,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ExistingRoomsList } from '@/components/home/existing-rooms-list';
+import { createRoomWithPassword } from './actions';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleJoinRoom = () => {
     if (roomCode.trim()) {
@@ -31,8 +38,20 @@ export default function Home() {
   };
 
   const handleCreateRoom = () => {
-    const newRoomId = Math.random().toString(36).substring(2, 8);
-    router.push(`/watch/${newRoomId}`);
+    startTransition(async () => {
+        const result = await createRoomWithPassword(password);
+        if (result.error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error creating room',
+                description: result.error,
+            });
+        } else if (result.data) {
+            router.push(`/watch/${result.data.sessionId}`);
+        }
+        setIsCreateRoomOpen(false);
+        setPassword('');
+    });
   };
 
   return (
@@ -50,10 +69,46 @@ export default function Home() {
           next.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-           <Button onClick={handleCreateRoom} size="lg" className="font-bold text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Clapperboard className="mr-2 h-6 w-6" />
-              Create Watch Party
-          </Button>
+           <Dialog open={isCreateRoomOpen} onOpenChange={setIsCreateRoomOpen}>
+                <DialogTrigger asChild>
+                    <Button size="lg" className="font-bold text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Clapperboard className="mr-2 h-6 w-6" />
+                        Create Watch Party
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Create a new Watch Party</DialogTitle>
+                        <DialogDescription>
+                           Set an optional password to make your room private.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="room-password" className="text-right">
+                            Password
+                        </Label>
+                        <Input 
+                            id="room-password" 
+                            type="password"
+                            placeholder="(optional)" 
+                            className="col-span-3"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreateRoom()}
+                        />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleCreateRoom} disabled={isPending}>
+                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clapperboard className="mr-2 h-4 w-4" />} Create Room
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
           <Dialog>
             <DialogTrigger asChild>
               <Button size="lg" variant="outline" className="font-bold text-lg px-8 py-6">
