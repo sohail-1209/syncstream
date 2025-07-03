@@ -35,6 +35,7 @@ export default function VideoPlayer({
   const { toast } = useToast();
   const playerRef = useRef<ReactPlayer>(null);
   const isSyncing = useRef(false);
+  const lastProgressUpdate = useRef(0);
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -141,10 +142,23 @@ export default function VideoPlayer({
   }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
   
   const handleProgress = useCallback((progress: OnProgressProps) => {
-    // This is intentionally left blank.
-    // Previously, it reset the isSyncing flag, which caused a race condition.
-    // The guard is now reliably reset by a timeout in the main sync effect.
-  }, []);
+    if (isSyncing.current) {
+      // If we are in the middle of a programmatic sync, do not send updates.
+      return;
+    }
+    
+    // Only the host should send periodic updates to avoid conflicts.
+    if (!isHost || !localIsPlaying) {
+      return;
+    }
+
+    const now = Date.now();
+    // Throttle updates to every 5 seconds to avoid spamming the database
+    if (now - lastProgressUpdate.current > 5000) {
+      lastProgressUpdate.current = now;
+      onPlaybackChange({ isPlaying: true, seekTime: progress.playedSeconds });
+    }
+  }, [isHost, localIsPlaying, onPlaybackChange]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -216,6 +230,7 @@ export default function VideoPlayer({
             <h2 className="text-2xl font-bold">{title}</h2>
             <p className="text-lg max-w-xl">{description}</p>
         </div>
+        {!isHost && <div className="absolute inset-0 z-10" />}
       </div>
     );
   }
@@ -238,6 +253,7 @@ export default function VideoPlayer({
               onPause={handlePause}
               onSeek={handleSeek}
               onProgress={handleProgress}
+              onError={handleUrlError}
               config={{
                 file: {
                   attributes: {
