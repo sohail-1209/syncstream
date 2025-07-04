@@ -1,14 +1,34 @@
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installed.');
+const CACHE_NAME = 'syncstream-cache-v1';
+const urlsToCache = [
+  '/',
+  '/manifest.json'
+];
+
+self.addEventListener('install', event => {
+  console.log('Service Worker: Installing...');
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('Service Worker: Caching app shell');
+        return cache.addAll(urlsToCache);
+      })
+      .then(() => {
+        console.log('Service Worker: Install completed');
+        return self.skipWaiting();
+      })
+  );
 });
 
-self.addEventListener('fetch', (event) => {
-  // A basic fetch handler is required for the app to be installable.
-  // This is a "network-first" strategy.
+self.addEventListener('activate', event => {
+    console.log('Service Worker: Activating...');
+    event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', event => {
   event.respondWith(
-    fetch(event.request).catch(() => {
-      // Optionally, you can return a fallback page here for offline support.
-      // For now, we'll just let the fetch fail.
-    })
+    caches.match(event.request)
+      .then(response => {
+        return response || fetch(event.request);
+      })
   );
 });

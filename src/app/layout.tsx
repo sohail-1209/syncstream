@@ -10,7 +10,6 @@ import PwaLoader from '@/components/pwa-loader';
 export const metadata: Metadata = {
   title: 'SyncStream',
   description: 'Your shared screen, perfectly in sync.',
-  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

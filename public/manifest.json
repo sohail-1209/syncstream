@@ -1,16 +1,34 @@
+
 {
   "name": "SyncStream",
   "short_name": "SyncStream",
   "description": "Your shared screen, perfectly in sync.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#141218",
+  "background_color": "#111827",
   "theme_color": "#4B0082",
   "icons": [
     {
       "src": "/icons/icon-512x512.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://placehold.co/1280x720.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "SyncStream Desktop View"
+    },
+    {
+      "src": "https://placehold.co/720x1280.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "SyncStream Mobile View"
     }
   ]
 }
