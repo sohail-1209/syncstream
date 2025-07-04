@@ -392,15 +392,14 @@ function WatchPartyContent({
                         size="icon"
                         onClick={onHostButtonClick}
                         disabled={isClaimingHost}
-                        className="h-9 w-9"
                     >
                         {isClaimingHost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
                         <span className="sr-only">{isHost ? 'Abdicate Host' : 'Become Host'}</span>
                     </Button>
                     
                     <RecommendationsModal>
-                        <Button variant="outline">
-                            <Wand2 className="h-4 w-4 md:mr-2" />
+                        <Button variant="outline" size="icon" className="md:w-auto md:px-4">
+                            <Wand2 className="h-4 w-4" />
                             <span className="hidden md:inline">AI Recs</span>
                         </Button>
                     </RecommendationsModal>
@@ -454,8 +453,8 @@ function WatchPartyContent({
 
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button>
-                                <Users className="h-4 w-4 md:mr-2" />
+                            <Button size="icon" className="md:w-auto md:px-4">
+                                <Users className="h-4 w-4" />
                                 <span className="hidden md:inline">Invite</span>
                             </Button>
                         </PopoverTrigger>
@@ -522,7 +521,7 @@ function WatchPartyContent({
                    )}
                    {(videoSource || activeSharer) && (
                        <>
-                           <EmojiBar sessionId={sessionId} user={user} />
+                           <EmojiBar sessionId={sessionId} user={user} isHost={isHost} onSync={handleSyncToHostClick} />
                            <FloatingMessages sessionId={sessionId} user={user} />
                            <FloatingEmojis sessionId={sessionId} />
                        </>
