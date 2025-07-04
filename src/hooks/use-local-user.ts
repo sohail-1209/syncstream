@@ -4,18 +4,18 @@
 import { useState, useEffect } from 'react';
 
 const ADJECTIVES = ['Swift', 'Silent', 'Clever', 'Brave', 'Wise', 'Lucky', 'Happy', 'Gentle', 'Proud', 'Funny'];
-const ANIMALS = ['Fox', 'Wolf', 'Bear', 'Lion', 'Tiger', 'Eagle', 'Shark', 'Panther', 'Falcon', 'Hawk'];
+// New list of animals based on user feedback
+const ANIMALS = ['Cat', 'Dog', 'Shark', 'Lion', 'Tiger', 'Bear', 'Fox', 'Panda']; 
+
 const ANIMAL_EMOJIS: { [key: string]: string } = {
-    'Fox': '🦊',
-    'Wolf': '🐺',
-    'Bear': '🐻',
-    'Lion': '🦁',
-    'Tiger': '🐅',
-    'Eagle': '🦅',
+    'Cat': '🐱',
+    'Dog': '🐶',
     'Shark': '🦈',
-    'Panther': '🐆', // Using Leopard emoji for Panther
-    'Falcon': '🦅',
-    'Hawk': '🦅'
+    'Lion': '🦁',
+    'Tiger': '🐯',
+    'Bear': '🐻',
+    'Fox': '🦊',
+    'Panda': '🐼',
 };
 
 
@@ -34,6 +34,21 @@ function generateAvatarUrl(animal: string): string {
     return `https://api.dicebear.com/8.x/fun-emoji/svg?emoji=${encodeURIComponent(emoji)}`;
 }
 
+// Function to create a brand new user
+function createNewUser(): LocalUser {
+    const adjective = getRandomItem(ADJECTIVES);
+    const animal = getRandomItem(ANIMALS);
+    const newId = crypto.randomUUID();
+    const name = `${adjective} ${animal}`;
+
+    return {
+        name: name,
+        avatar: generateAvatarUrl(animal),
+        id: newId,
+    };
+}
+
+
 export function useLocalUser(): LocalUser | null {
   const [user, setUser] = useState<LocalUser | null>(null);
 
@@ -41,8 +56,7 @@ export function useLocalUser(): LocalUser | null {
     // This code only runs on the client
     let localUserJson = localStorage.getItem('syncstream_user');
     let localUser: LocalUser | null = null;
-    let userWasModified = false;
-
+    
     if (localUserJson) {
       try {
         localUser = JSON.parse(localUserJson);
@@ -52,34 +66,26 @@ export function useLocalUser(): LocalUser | null {
       }
     }
 
-    // If user exists, check if we need to update their avatar to the new style.
-    if (localUser && (!localUser.avatar || !localUser.avatar.includes('/fun-emoji/'))) {
-        const animal = localUser.name.split(' ')[1];
-        if (animal && ANIMALS.includes(animal)) {
-             localUser.avatar = generateAvatarUrl(animal);
-             userWasModified = true;
-        }
-    }
-
-
     if (localUser && localUser.id && localUser.name && localUser.avatar) {
-      // If we updated the avatar, save the changes back to localStorage.
-      if (userWasModified) {
-          localStorage.setItem('syncstream_user', JSON.stringify(localUser));
-      }
-      setUser(localUser);
+        // Check if the user's animal is in the new list.
+        const currentAnimal = localUser.name.split(' ')[1];
+        if (currentAnimal && ANIMALS.includes(currentAnimal)) {
+            // User is valid and has an approved animal, just make sure avatar is latest style
+            const expectedAvatar = generateAvatarUrl(currentAnimal);
+            if (localUser.avatar !== expectedAvatar) {
+                localUser.avatar = expectedAvatar;
+                localStorage.setItem('syncstream_user', JSON.stringify(localUser));
+            }
+            setUser(localUser);
+        } else {
+            // User has an old/invalid animal, so we generate a new identity for them.
+            const newUser = createNewUser();
+            localStorage.setItem('syncstream_user', JSON.stringify(newUser));
+            setUser(newUser);
+        }
     } else {
-      // Create a new user if one doesn't exist.
-      const adjective = getRandomItem(ADJECTIVES);
-      const animal = getRandomItem(ANIMALS);
-      const newId = crypto.randomUUID();
-      const name = `${adjective} ${animal}`;
-
-      const newUser: LocalUser = {
-        name: name,
-        avatar: generateAvatarUrl(animal),
-        id: newId,
-      };
+      // Create a new user if one doesn't exist at all.
+      const newUser = createNewUser();
       localStorage.setItem('syncstream_user', JSON.stringify(newUser));
       setUser(newUser);
     }
