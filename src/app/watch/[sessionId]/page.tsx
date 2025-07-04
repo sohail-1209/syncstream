@@ -486,8 +486,8 @@ function WatchPartyContent({
                    )}
                 </div>
                 <div className={cn(
-                    "hidden md:flex flex-col md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0",
-                    !isSidebarOpen && "hidden"
+                    "flex-col md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0",
+                    isSidebarOpen ? "hidden md:flex" : "hidden"
                 )}>
                     <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
                 </div>
