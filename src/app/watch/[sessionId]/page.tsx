@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react";
 import { DisconnectReason } from "livekit-client";
 import EmojiBar from "@/components/watch-party/emoji-bar";
+import FloatingMessages from "@/components/watch-party/floating-messages";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
@@ -502,6 +503,7 @@ function WatchPartyContent({
                                 isHost={isHost}
                             />
                             {videoSource && <EmojiBar />}
+                            {videoSource && <FloatingMessages sessionId={sessionId} user={user} />}
                         </div>
                    )}
                 </div>
