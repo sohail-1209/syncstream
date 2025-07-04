@@ -22,6 +22,7 @@ import { ExistingRoomsList } from '@/components/home/existing-rooms-list';
 import { createRoomWithPassword } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 export default function Home() {
@@ -31,7 +32,7 @@ export default function Home() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
-  const { handleInstall } = usePwaInstall();
+  const { canInstall, handleInstall } = usePwaInstall();
 
   const handleJoinRoom = () => {
     if (roomCode.trim()) {
@@ -59,10 +60,21 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 text-center md:p-8 bg-background">
       <div className="absolute top-4 right-4 flex items-center gap-2">
-        <Button variant="outline" onClick={handleInstall}>
-            <Download className="mr-2 h-4 w-4" />
-            Install App
-        </Button>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <div tabIndex={0}>
+                    <Button variant="outline" onClick={handleInstall} disabled={!canInstall}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Install App
+                    </Button>
+                </div>
+            </TooltipTrigger>
+            {!canInstall && (
+                <TooltipContent>
+                    <p>Installation is not available on this browser or the app is already installed.</p>
+                </TooltipContent>
+            )}
+        </Tooltip>
         <ExistingRoomsList />
       </div>
       <div className="text-center space-y-6 max-w-2xl mx-auto">
