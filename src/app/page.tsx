@@ -105,12 +105,10 @@ export default function Home() {
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <Tooltip>
             <TooltipTrigger asChild>
-                <div tabIndex={0}> {/* Wrapper for Tooltip with disabled button */}
-                    <Button variant="outline" onClick={handleInstall} disabled={!installPrompt}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Install App
-                    </Button>
-                </div>
+                <Button variant="outline" onClick={handleInstall}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Install App
+                </Button>
             </TooltipTrigger>
             {!installPrompt && (
                 <TooltipContent>
