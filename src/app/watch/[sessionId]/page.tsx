@@ -97,15 +97,19 @@ function WatchPartyContent({
     const [hostPassword, setHostPassword] = useState('');
     const [isClaimingHost, startClaimHostTransition] = useTransition();
     const videoPlayerRef = useRef<VideoPlayerRef>(null);
+    const shownToastForUrl = useRef<string | null>(null);
 
     const [playerStatus, setPlayerStatus] = useState<VideoPlayerStatus>('idle');
 
     useEffect(() => {
-        if (playerStatus === 'ready' && videoSource) {
+        // Only show toast if status is ready, there's a video, and we haven't shown a toast for this specific URL yet.
+        if (playerStatus === 'ready' && videoSource?.correctedUrl && shownToastForUrl.current !== videoSource.correctedUrl) {
             toast({
                 title: "Video Loaded!",
                 description: `Playing from ${videoSource.platform}.`
             });
+            // Mark this URL as having had its toast shown.
+            shownToastForUrl.current = videoSource.correctedUrl;
         }
     }, [playerStatus, videoSource, toast]);
 
