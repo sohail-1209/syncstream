@@ -96,25 +96,30 @@ export default function VideoPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playbackState, isReady, isMounted, user]);
 
+  useEffect(() => {
+      if (isReady && playbackState && playerRef.current) {
+          isSyncing.current = true;
+          setLocalIsPlaying(playbackState.isPlaying);
+          playerRef.current.seekTo(playbackState.seekTime, 'seconds');
+          setTimeout(() => { isSyncing.current = false; }, 500);
+      }
+  }, [isReady, playbackState]);
+
   const handleReady = useCallback(() => {
     setIsReady(true);
-    if (playbackState && playerRef.current) {
-        // When the player is ready, it should immediately adopt the host's state.
-        isSyncing.current = true;
-        setLocalIsPlaying(playbackState.isPlaying);
-        playerRef.current.seekTo(playbackState.seekTime, 'seconds');
-        setTimeout(() => { isSyncing.current = false; }, 1000); // Release lock after sync
-    }
-  }, [playbackState]);
+  }, []);
 
   const handlePlay = useCallback(() => {
     if (isSyncing.current) return;
     
     if (!isHost) {
-        if (!localIsPlaying) {
-          setLocalIsPlaying(true);
-        }
-        return;
+      // For non-hosts, we let them play locally to satisfy browser autoplay policies,
+      // but we don't send updates. The sync logic will eventually correct their state
+      // to match the host's.
+      if (!localIsPlaying) {
+        setLocalIsPlaying(true);
+      }
+      return;
     }
 
     if (!localIsPlaying) {
@@ -129,10 +134,10 @@ export default function VideoPlayer({
     if (isSyncing.current) return;
     
     if (!isHost) {
-        if (localIsPlaying) {
-          setLocalIsPlaying(false);
-        }
-        return;
+       if (localIsPlaying) {
+        setLocalIsPlaying(false);
+      }
+      return;
     }
     
     if (localIsPlaying) {
@@ -231,13 +236,13 @@ export default function VideoPlayer({
     let Icon = Film;
     let title = "No Video Loaded";
     let description = isHost 
-      ? 'You are the host. Use the "Set Video" button above to load a video for everyone.'
-      : "Waiting for the host to start a video. Click to activate playback if needed.";
+      ? 'You are the host. Use the "Set Video" button to load a video for everyone.'
+      : "Waiting for the host to start a video. Click the player to activate if needed.";
 
     if (urlError) {
       Icon = AlertTriangle;
       title = "Video Playback Error";
-      description = "The provider is blocking playback here. The host should try using the 'Share Screen' feature instead.";
+      description = "The provider is blocking playback. The host should try the 'Share Screen' feature instead.";
     }
 
     return (
@@ -291,7 +296,7 @@ export default function VideoPlayer({
               }}
             />
             {!isHost && isReady && (
-              <div className="absolute bottom-20 left-4 z-20 opacity-80 hover:opacity-100 transition-opacity">
+              <div className="absolute bottom-20 left-4 z-20 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg">
                   <Button onClick={handleSyncToHost} variant="secondary" size="sm">
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Sync to Host
