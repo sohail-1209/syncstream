@@ -16,12 +16,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ExistingRoomsList } from '@/components/home/existing-rooms-list';
 import { createRoomWithPassword } from './actions';
 import { useToast } from '@/hooks/use-toast';
-import { usePwaInstall } from '@/hooks/use-pwa-install';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState('');
@@ -30,7 +39,43 @@ export default function Home() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
-  const { handleInstall } = usePwaInstall();
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      console.log('`beforeinstallprompt` event has fired.');
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) {
+        toast({
+            variant: 'destructive',
+            title: 'Installation Not Available',
+            description: 'The app is not ready to be installed. This might be because your browser does not support it, or it is already installed.'
+        });
+        return;
+    };
+    
+    await installPrompt.prompt();
+    
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+        toast({
+            title: 'Installation Complete!',
+            description: 'The app has been added to your home screen.'
+        });
+    }
+    setInstallPrompt(null);
+  };
 
   const handleJoinRoom = () => {
     if (roomCode.trim()) {
@@ -58,10 +103,21 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 text-center md:p-8 bg-background">
       <div className="absolute top-4 right-4 flex items-center gap-2">
-        <Button variant="outline" onClick={handleInstall}>
-            <Download className="mr-2 h-4 w-4" />
-            Install App
-        </Button>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <div tabIndex={0}> {/* Wrapper for Tooltip with disabled button */}
+                    <Button variant="outline" onClick={handleInstall} disabled={!installPrompt}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Install App
+                    </Button>
+                </div>
+            </TooltipTrigger>
+            {!installPrompt && (
+                <TooltipContent>
+                    <p>App is not installable yet or is already installed.</p>
+                </TooltipContent>
+            )}
+        </Tooltip>
         <ExistingRoomsList />
       </div>
       <div className="text-center space-y-6 max-w-2xl mx-auto">

@@ -1,4 +1,3 @@
-
 {
   "name": "SyncStream",
   "short_name": "SyncStream",
@@ -11,8 +10,7 @@
     {
       "src": "/icons/icon-512x512.svg",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/svg+xml"
     }
   ],
   "screenshots": [
