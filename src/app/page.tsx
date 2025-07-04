@@ -1,7 +1,21 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Clapperboard, Users, ArrowRight, Loader2, Download, HelpCircle } from 'lucide-react';
+import { 
+  Clapperboard, 
+  Users, 
+  ArrowRight, 
+  Loader2, 
+  Download, 
+  HelpCircle,
+  Wand2,
+  Link as LinkIcon,
+  ScreenShare,
+  Crown,
+  PanelRightOpen,
+  Mic,
+  RefreshCw
+} from 'lucide-react';
 import { Logo } from '@/components/icons';
 import {
   Dialog,
@@ -22,6 +36,9 @@ import { ExistingRoomsList } from '@/components/home/existing-rooms-list';
 import { createRoomWithPassword } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -111,45 +128,123 @@ export default function Home() {
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 p-4">
-                <h4 className="font-medium leading-none mb-4">App Guide</h4>
-                <div className="space-y-4 text-sm">
-                    <div className="flex items-start gap-4">
-                        <div className="p-2 bg-muted rounded-md shrink-0">
-                            <Download className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                            <p className="font-semibold">Install App</p>
-                            <p className="text-muted-foreground">Installs SyncStream on your device for offline use and easy access from your home screen.</p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                        <div className="p-2 bg-muted rounded-md shrink-0">
-                            <Users className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                            <p className="font-semibold">View Rooms</p>
-                            <p className="text-muted-foreground">See a list of all active watch parties. You can join a public room or delete one you created.</p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                        <div className="p-2 bg-muted rounded-md shrink-0">
-                            <Clapperboard className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                            <p className="font-semibold">Create Watch Party</p>
-                            <p className="text-muted-foreground">Start a new watch party session. You can set an optional password to make it private.</p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                        <div className="p-2 bg-muted rounded-md shrink-0">
-                            <ArrowRight className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                            <p className="font-semibold">Join by Code</p>
-                            <p className="text-muted-foreground">Enter a unique code from a friend to join their watch party session directly.</p>
-                        </div>
-                    </div>
+              <h4 className="font-medium leading-none mb-4 text-center">App Guide</h4>
+              <ScrollArea className="h-[450px]">
+                <div className="space-y-4 text-sm p-1">
+                  <div>
+                      <h5 className="font-semibold text-lg leading-none mb-4 text-primary">Homepage</h5>
+                      <div className="space-y-4 text-sm">
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <Download className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Install App</p>
+                                  <p className="text-muted-foreground">Installs SyncStream on your device for offline use and easy access from your home screen.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <Users className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">View Rooms</p>
+                                  <p className="text-muted-foreground">See a list of all active watch parties. You can join a public room or delete one you created.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <Clapperboard className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Create Watch Party</p>
+                                  <p className="text-muted-foreground">Start a new watch party session. You can set an optional password to make it private.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <ArrowRight className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Join by Code</p>
+                                  <p className="text-muted-foreground">Enter a unique code from a friend to join their watch party session directly.</p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div>
+                      <h5 className="font-semibold text-lg leading-none mb-4 text-primary">Watch Party</h5>
+                      <div className="space-y-4 text-sm">
+                           <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <Crown className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Become Host</p>
+                                  <p className="text-muted-foreground">Take control of the room. The host can change the video, start screen shares, and sync playback for everyone.</p>
+                              </div>
+                          </div>
+                           <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <LinkIcon className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Set Video</p>
+                                  <p className="text-muted-foreground">The host can load a video by providing a URL from YouTube, Vimeo, or a direct link.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <ScreenShare className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Share Screen</p>
+                                  <p className="text-muted-foreground">The host can share their screen, perfect for content that isn't supported by direct links.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <Wand2 className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">AI Recommendations</p>
+                                  <p className="text-muted-foreground">Get AI-powered movie and show recommendations based on your group's tastes.</p>
+                              </div>
+                          </div>
+                           <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <Mic className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Toggle Mic</p>
+                                  <p className="text-muted-foreground">Mute or unmute your microphone to talk with others in the room.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <PanelRightOpen className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Chat & Participants</p>
+                                  <p className="text-muted-foreground">Open the side panel to chat with others and see who's currently in the session.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <RefreshCw className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Sync to Host</p>
+                                  <p className="text-muted-foreground">If your video falls out of sync, click this to jump to the host's current playback time.</p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
                 </div>
+              </ScrollArea>
             </PopoverContent>
         </Popover>
         <Tooltip>
