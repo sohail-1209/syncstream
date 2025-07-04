@@ -10,7 +10,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer, { type VideoPlayerRef } from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare, MoreVertical } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -320,6 +320,119 @@ function WatchPartyContent({
         }
     };
 
+    const renderDesktopControls = () => (
+        <div className="hidden md:flex items-center justify-between flex-1">
+            <div className="flex-1" /> {/* Spacer */}
+            
+            {/* Center Controls */}
+            <div className="flex flex-col items-center">
+                <span className="text-xs text-muted-foreground">ROOM CODE</span>
+                <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-base font-mono tracking-widest px-3 py-1">{sessionId}</Badge>
+                    {hasPassword && (
+                        <Popover onOpenChange={(open) => { if (open) handleFetchPassword(); else setTimeout(() => setSessionPassword(null), 150); }}>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Eye className="h-4 w-4" /></Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-4">
+                                {isFetchingPassword || sessionPassword === null ? <Loader2 className="h-5 w-5 animate-spin"/> : <p className="font-mono text-lg font-bold text-primary">{sessionPassword}</p>}
+                            </PopoverContent>
+                        </Popover>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={toggleFullscreen}><span className="sr-only">Toggle Fullscreen</span>{isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}</Button>
+                    {!isHost && (videoSource || activeSharer) && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleSyncToHostClick} title="Sync to Host"><RefreshCw className="h-4 w-4" /></Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Right Controls */}
+            <div className="flex-1 flex justify-end items-center gap-1">
+                <Button variant={isHost ? 'default' : 'outline'} size="icon" onClick={onHostButtonClick} disabled={isClaimingHost}>
+                    {isClaimingHost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
+                    <span className="sr-only">{isHost ? 'Abdicate Host' : 'Become Host'}</span>
+                </Button>
+                <RecommendationsModal><Button variant="outline" size="icon" className="md:w-auto md:px-4"><Wand2 className="h-4 w-4" /><span className="hidden md:inline">AI Recs</span></Button></RecommendationsModal>
+                <Button variant="outline" size="icon" onClick={handleShareScreen} disabled={isTogglingShare}>
+                    {isTogglingShare ? <Loader2 className="h-4 w-4 animate-spin" /> : (amSharing ? <VideoOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />)}
+                    <span className="sr-only">{amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
+                </Button>
+                {localParticipant && <Button variant="outline" size="icon" onClick={handleToggleMic}>{isMicMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button>}
+                <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
+                    <PopoverTrigger asChild><Button variant="outline" size="icon" disabled={!isHost}><LinkIcon className="h-4 w-4" /></Button></PopoverTrigger>
+                    <PopoverContent className="w-80">
+                        <div className="space-y-2"><h4 className="font-medium">Set Video</h4><p className="text-sm text-muted-foreground">Paste a video link. Direct links work best.</p></div>
+                        <div className="flex items-center gap-2 mt-2"><Input value={tempUrl} onChange={(e) => setTempUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()} disabled={isPending} /><Button onClick={handleSetVideo} size="sm" disabled={isPending}>{isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load"}</Button></div>
+                        {urlError && <p className="text-xs text-destructive mt-1">{urlError}</p>}
+                    </PopoverContent>
+                </Popover>
+                <Popover>
+                    <PopoverTrigger asChild><Button size="icon" className="md:w-auto md:px-4"><Users className="h-4 w-4" /><span className="hidden md:inline">Invite</span></Button></PopoverTrigger>
+                    <PopoverContent className="w-[90vw] sm:w-80">
+                        <div className="space-y-2"><h4 className="font-medium">Invite friends</h4><p className="text-sm text-muted-foreground">Share this link to invite others.</p></div>
+                        <div className="flex items-center gap-2 mt-2"><Input value={inviteLink} readOnly /><Button variant="outline" size="icon" onClick={handleCopyInvite}><Copy className="h-4 w-4" /></Button></div>
+                    </PopoverContent>
+                </Popover>
+                <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>{isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}</Button>
+                <Button variant="outline" size="icon" onClick={handleExitRoom}><LogOut className="h-4 w-4" /></Button>
+            </div>
+        </div>
+    );
+
+    const renderMobileControls = () => (
+        <div className="flex items-center gap-1 md:hidden">
+            <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+                <SheetTrigger asChild><Button variant="outline" size="icon"><MessageSquare className="h-4 w-4" /></Button></SheetTrigger>
+                <SheetContent side="right" className="p-0 w-full max-w-xs"><Sidebar sessionId={sessionId} user={user} hostId={hostId} /></SheetContent>
+            </Sheet>
+
+            <Sheet>
+                <SheetTrigger asChild><Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button></SheetTrigger>
+                <SheetContent side="bottom" className="p-4 pt-2 w-full h-auto rounded-t-lg">
+                    <DialogHeader><DialogTitle className="text-center mb-2">Controls</DialogTitle></DialogHeader>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {/* Room Info */}
+                        <div className="flex justify-between items-center p-2 rounded-lg bg-muted col-span-full">
+                           <div className="flex flex-col">
+                             <span className="text-xs text-muted-foreground">ROOM CODE</span>
+                             <span className="font-mono">{sessionId}</span>
+                           </div>
+                           {hasPassword && (
+                             <Popover onOpenChange={(open) => { if (open) handleFetchPassword(); else setTimeout(() => setSessionPassword(null), 150); }}>
+                                 <PopoverTrigger asChild><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></PopoverTrigger>
+                                 <PopoverContent className="w-auto p-4">{isFetchingPassword || sessionPassword === null ? <Loader2 className="h-5 w-5 animate-spin"/> : <p className="font-mono text-lg font-bold text-primary">{sessionPassword}</p>}</PopoverContent>
+                             </Popover>
+                           )}
+                        </div>
+                        {/* Actions */}
+                        <Button variant="outline" className="w-full justify-start gap-2" onClick={onHostButtonClick} disabled={isClaimingHost}>{isClaimingHost ? <Loader2 className="animate-spin" /> : <Crown />} {isHost ? 'Abdicate Host' : 'Become Host'}</Button>
+                        <Button variant="outline" className="w-full justify-start gap-2" onClick={handleShareScreen} disabled={isTogglingShare}>{isTogglingShare ? <Loader2 className="animate-spin" /> : (amSharing ? <VideoOff /> : <ScreenShare />)} {amSharing ? 'Stop Sharing' : 'Share Screen'}</Button>
+                        <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
+                             <PopoverTrigger asChild><Button variant="outline" className="w-full justify-start gap-2" disabled={!isHost}><LinkIcon /> Set Video</Button></PopoverTrigger>
+                             <PopoverContent className="w-80">
+                                <div className="space-y-2"><h4 className="font-medium">Set Video</h4><p className="text-sm text-muted-foreground">Paste a video link. Direct links work best.</p></div>
+                                <div className="flex items-center gap-2 mt-2"><Input value={tempUrl} onChange={(e) => setTempUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()} disabled={isPending} /><Button onClick={handleSetVideo} size="sm" disabled={isPending}>{isPending ? <Loader2 className="animate-spin" /> : "Load"}</Button></div>
+                                {urlError && <p className="text-xs text-destructive mt-1">{urlError}</p>}
+                            </PopoverContent>
+                        </Popover>
+                        {localParticipant && <Button variant="outline" className="w-full justify-start gap-2" onClick={handleToggleMic}>{isMicMuted ? <MicOff /> : <Mic />} {isMicMuted ? "Unmute" : "Mute"}</Button>}
+                        <Popover>
+                            <PopoverTrigger asChild><Button variant="outline" className="w-full justify-start gap-2"><Users /> Invite</Button></PopoverTrigger>
+                            <PopoverContent className="w-[90vw] sm:w-80">
+                                <div className="space-y-2"><h4 className="font-medium">Invite friends</h4><p className="text-sm text-muted-foreground">Share this link to invite others.</p></div>
+                                <div className="flex items-center gap-2 mt-2"><Input value={inviteLink} readOnly /><Button variant="outline" size="icon" onClick={handleCopyInvite}><Copy className="h-4 w-4" /></Button></div>
+                            </PopoverContent>
+                        </Popover>
+                        <RecommendationsModal><Button variant="outline" className="w-full justify-start gap-2"><Wand2 /> AI Recs</Button></RecommendationsModal>
+                        <Button variant="outline" className="w-full justify-start gap-2" onClick={toggleFullscreen}>{isFullscreen ? <Minimize /> : <Maximize />} {isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</Button>
+                        {!isHost && (videoSource || activeSharer) && <Button variant="outline" className="w-full justify-start gap-2" onClick={handleSyncToHostClick}><RefreshCw /> Sync to Host</Button>}
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            <Button variant="outline" size="icon" onClick={handleExitRoom}><LogOut className="h-4 w-4" /></Button>
+        </div>
+    );
 
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
@@ -329,176 +442,8 @@ function WatchPartyContent({
                     <span className="font-bold text-xl font-headline hidden sm:inline">SyncStream</span>
                 </Link>
 
-                <div className="hidden md:flex flex-col items-center">
-                    <span className="text-xs text-muted-foreground">ROOM CODE</span>
-                    <div className="flex items-center gap-1">
-                        <Badge variant="outline" className="text-base font-mono tracking-widest px-3 py-1">{sessionId}</Badge>
-                        {hasPassword && (
-                            <Popover onOpenChange={(open) => {
-                                if (open) {
-                                    handleFetchPassword();
-                                } else {
-                                    setTimeout(() => setSessionPassword(null), 150);
-                                }
-                            }}>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                                        <Eye className="h-4 w-4" />
-                                        <span className="sr-only">Show Room Password</span>
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-4">
-                                    <div className="flex flex-col items-center gap-2 text-center">
-                                        <h4 className="font-medium leading-none">Room Password</h4>
-                                        <div className="min-h-[2rem] flex items-center justify-center">
-                                            {isFetchingPassword || sessionPassword === null ? (
-                                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground"/>
-                                            ) : (
-                                                <p className="font-mono text-lg font-bold text-primary">{sessionPassword}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        )}
-                         <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-full"
-                            onClick={toggleFullscreen}
-                            aria-label={isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
-                        >
-                            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                            <span className="sr-only">{isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
-                        </Button>
-                         {!isHost && (videoSource || activeSharer) && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full"
-                                onClick={handleSyncToHostClick}
-                                title="Sync to Host"
-                            >
-                                <RefreshCw className="h-4 w-4" />
-                                <span className="sr-only">Sync to Host</span>
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-1 md:gap-2">
-                    <Button
-                        variant={isHost ? 'default' : 'outline'}
-                        size="icon"
-                        onClick={onHostButtonClick}
-                        disabled={isClaimingHost}
-                    >
-                        {isClaimingHost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
-                        <span className="sr-only">{isHost ? 'Abdicate Host' : 'Become Host'}</span>
-                    </Button>
-                    
-                    <RecommendationsModal>
-                        <Button variant="outline" size="icon" className="md:w-auto md:px-4">
-                            <Wand2 className="h-4 w-4" />
-                            <span className="hidden md:inline">AI Recs</span>
-                        </Button>
-                    </RecommendationsModal>
-
-                    <Button variant="outline" size="icon" onClick={handleShareScreen} disabled={isTogglingShare}>
-                        {isTogglingShare ? <Loader2 className="h-4 w-4 animate-spin" /> : (amSharing ? <VideoOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />)}
-                        <span className="sr-only">{isTogglingShare ? "Loading..." : amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
-                    </Button>
-                    
-                    {localParticipant && (
-                        <Button variant="outline" size="icon" onClick={handleToggleMic}>
-                            {isMicMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                            <span className="sr-only">{isMicMuted ? "Unmute" : "Mute"}</span>
-                        </Button>
-                    )}
-
-                    <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
-                        <PopoverTrigger asChild>
-                             <Button variant="outline" size="icon" disabled={!isHost}>
-                                <LinkIcon className="h-4 w-4" />
-                                <span className="sr-only">Set Video</span>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80">
-                            <div className="grid gap-4">
-                                <div className="space-y-2">
-                                    <h4 className="font-medium leading-none">Set Video Source</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Paste a video link from YouTube, Vimeo, or another source. Our AI will try its best to identify and play it. Direct links to video files (.mp4, .m3u8) work best, but many other streaming links will work too.
-                                    </p>
-                                </div>
-                                <div className="grid gap-2">
-                                     <div className="flex items-center space-x-2">
-                                         <Input
-                                             placeholder="https://youtube.com/watch?v=..."
-                                             value={tempUrl}
-                                             onChange={(e) => setTempUrl(e.target.value)}
-                                             onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()}
-                                             className="h-8"
-                                             disabled={isPending}
-                                         />
-                                         <Button onClick={handleSetVideo} size="sm" className="h-8" disabled={isPending}>
-                                             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load"}
-                                         </Button>
-                                     </div>
-                                     {urlError && <p className="text-xs text-destructive">{urlError}</p>}
-                                </div>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button size="icon" className="md:w-auto md:px-4">
-                                <Users className="h-4 w-4" />
-                                <span className="hidden md:inline">Invite</span>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[90vw] sm:w-80">
-                            <div className="grid gap-4">
-                                <div className="space-y-2">
-                                    <h4 className="font-medium leading-none">Invite friends</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Share this link with others to join the party. The code at the end is your room code.
-                                    </p>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Input value={inviteLink} readOnly className="h-8"/>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleCopyInvite}>
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                    
-                    {/* Mobile sidebar toggle */}
-                    <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-                        <SheetTrigger asChild>
-                            <Button variant="outline" size="icon" className="md:hidden">
-                                <MessageSquare className="h-4 w-4" />
-                                <span className="sr-only">Toggle Chat & Participants</span>
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="right" className="p-0 w-full max-w-xs">
-                            <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
-                        </SheetContent>
-                    </Sheet>
-
-                    {/* Desktop sidebar toggle */}
-                    <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden md:inline-flex">
-                        {isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-                        <span className="sr-only">Toggle Sidebar</span>
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={handleExitRoom}>
-                        <LogOut className="h-4 w-4" />
-                        <span className="sr-only">Exit</span>
-                    </Button>
-                </div>
+                {renderDesktopControls()}
+                {renderMobileControls()}
             </header>
             <main className={cn(
                 "flex-1 flex flex-col md:grid gap-4 p-2 md:p-4",
@@ -520,11 +465,11 @@ function WatchPartyContent({
                         />
                    )}
                    {(videoSource || activeSharer) && (
-                       <>
+                       <div className="absolute inset-0 pointer-events-none">
                            <EmojiBar sessionId={sessionId} user={user} isHost={isHost} onSync={handleSyncToHostClick} />
                            <FloatingMessages sessionId={sessionId} user={user} />
                            <FloatingEmojis sessionId={sessionId} />
-                       </>
+                       </div>
                    )}
                 </div>
                 <div className={cn(
