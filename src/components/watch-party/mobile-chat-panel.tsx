@@ -100,7 +100,7 @@ export default function MobileChatPanel({ sessionId, user, participants, partici
             <div
               key={msg.id}
               className={cn(
-                'flex items-end gap-2',
+                'flex items-center gap-2',
                 msg.isMe ? 'justify-end' : 'justify-start'
               )}
             >
@@ -114,7 +114,7 @@ export default function MobileChatPanel({ sessionId, user, participants, partici
                 className={cn(
                   'max-w-xs rounded-lg px-3 py-2 text-sm',
                   msg.isMe
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-accent text-accent-foreground'
                     : 'bg-muted'
                 )}
               >
