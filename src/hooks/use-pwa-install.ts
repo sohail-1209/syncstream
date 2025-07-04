@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToast } from './use-toast';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -13,6 +15,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function usePwaInstall() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -28,15 +31,25 @@ export function usePwaInstall() {
   }, []);
 
   const handleInstall = async () => {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+        toast({
+            variant: 'destructive',
+            title: 'Installation Not Available',
+            description: 'Your browser may not support installation, or the app might already be installed.'
+        });
+        return;
+    };
     
     await installPrompt.prompt();
     
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
+        toast({
+            title: 'Installation Complete!',
+            description: 'The app has been added to your home screen.'
+        });
     } else {
-      console.log('User dismissed the install prompt');
+        // Silently fail if dismissed, as it's a common user action.
     }
     setInstallPrompt(null);
   };

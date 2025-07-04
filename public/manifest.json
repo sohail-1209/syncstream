@@ -4,7 +4,7 @@
   "description": "Your shared screen, perfectly in sync.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#161418",
+  "background_color": "#131215",
   "theme_color": "#a855f7",
   "icons": [
     {
