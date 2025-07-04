@@ -36,9 +36,14 @@ export function useLocalUser(): LocalUser | null {
     if (localUser && localUser.id && localUser.name && localUser.avatar) {
       setUser(localUser);
     } else {
+      const adjective = getRandomItem(ADJECTIVES);
+      const animalIndex = Math.floor(Math.random() * ANIMALS.length);
+      const animal = ANIMALS[animalIndex];
+      const color = COLORS[animalIndex % COLORS.length];
+
       const newUser: LocalUser = {
-        name: `${getRandomItem(ADJECTIVES)} ${getRandomItem(ANIMALS)}`,
-        avatar: `https://placehold.co/100x100/${getRandomItem(COLORS)}/ffffff`,
+        name: `${adjective} ${animal}`,
+        avatar: `https://placehold.co/100x100/${color}/ffffff`,
         id: crypto.randomUUID(),
       };
       localStorage.setItem('syncstream_user', JSON.stringify(newUser));
