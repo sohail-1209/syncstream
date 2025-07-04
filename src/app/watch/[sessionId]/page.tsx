@@ -40,6 +40,9 @@ type PlaybackState = {
   updatedAt: number;
 } | null;
 
+export async function generateStaticParams() {
+    return [];
+}
 
 function WatchPartyContent({
     sessionId,
@@ -818,3 +821,5 @@ export default function WatchPartyPage() {
         </div>
     );
 }
+
+    
