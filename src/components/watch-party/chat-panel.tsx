@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -85,41 +86,43 @@ export default function ChatPanel({ sessionId, user }: { sessionId: string; user
 
   return (
     <div className="flex flex-col h-full">
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="space-y-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                'flex items-end gap-2',
-                msg.isMe ? 'justify-end' : 'justify-start'
-              )}
-            >
-              {!msg.isMe && (
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={msg.user.avatar} alt={msg.user.name} />
-                  <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-              )}
-              <div
-                className={cn(
-                  'max-w-xs rounded-lg px-3 py-2 text-sm',
-                  msg.isMe
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                )}
-              >
-                {!msg.isMe && <p className="font-semibold text-xs mb-1 text-accent">{msg.user.name}</p>}
-                <p>{msg.text}</p>
-              </div>
-               {msg.isMe && (
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={msg.user.avatar} alt={msg.user.name} />
-                  <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-              )}
+      <ScrollArea className="flex-1" ref={scrollAreaRef}>
+        <div className="p-4 min-h-full flex flex-col justify-end">
+            <div className="space-y-4">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    'flex items-end gap-2',
+                    msg.isMe ? 'justify-end' : 'justify-start'
+                  )}
+                >
+                  {!msg.isMe && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={msg.user.avatar} alt={msg.user.name} />
+                      <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div
+                    className={cn(
+                      'max-w-xs rounded-lg px-3 py-2 text-sm',
+                      msg.isMe
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    )}
+                  >
+                    {!msg.isMe && <p className="font-semibold text-xs mb-1 text-accent">{msg.user.name}</p>}
+                    <p>{msg.text}</p>
+                  </div>
+                   {msg.isMe && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={msg.user.avatar} alt={msg.user.name} />
+                      <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
         </div>
       </ScrollArea>
       <div className="p-4 border-t">
