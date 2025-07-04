@@ -255,9 +255,9 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
             </Button>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground p-4">
-            <Icon className={`h-16 w-16 mb-4 ${urlError ? 'text-destructive' : ''}`} />
-            <h2 className="text-2xl font-bold">{title}</h2>
-            <p className="text-lg max-w-xl">{description}</p>
+            <Icon className={`h-12 w-12 md:h-16 md:w-16 mb-4 ${urlError ? 'text-destructive' : ''}`} />
+            <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
+            <p className="text-base md:text-lg max-w-xl">{description}</p>
         </div>
       </div>
     );

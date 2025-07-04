@@ -68,10 +68,10 @@ export default function LiveKitStage({ sharerId }: { sharerId: string }) {
                 <span className="sr-only">{isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
             </Button>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <ScreenShare className="h-16 w-16 mb-4" />
-            <h2 className="text-2xl font-bold">Waiting for screen share...</h2>
-            <p className="text-lg">The host has not started sharing their screen yet.</p>
+        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+            <ScreenShare className="h-12 w-12 md:h-16 md:w-16 mb-4" />
+            <h2 className="text-xl md:text-2xl font-bold">Waiting for screen share...</h2>
+            <p className="text-base md:text-lg">The host has not started sharing their screen yet.</p>
         </div>
       </Card>
     );
