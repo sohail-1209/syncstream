@@ -87,8 +87,8 @@ export default function ChatPanel({ sessionId, user }: { sessionId: string; user
   return (
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
-        <div className="p-4 min-h-full flex flex-col justify-end">
-            <div className="space-y-4">
+        <div className="flex flex-col min-h-full p-4">
+            <div className="space-y-4 mt-auto">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
