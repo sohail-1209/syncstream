@@ -3,7 +3,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Film, AlertTriangle, Maximize, Minimize } from "lucide-react";
+import { Film, AlertTriangle, Maximize, Minimize, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -30,6 +30,8 @@ export interface VideoPlayerRef {
   syncToHost: () => void;
 }
 
+type VideoPlayerStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer({ 
   videoSource,
   playbackState,
@@ -44,49 +46,63 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const lastHostUpdate = useRef(0);
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  
-  const [urlError, setUrlError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isPlaceholderFullscreen, setIsPlaceholderFullscreen] = useState(false);
   const placeholderRef = useRef<HTMLDivElement>(null);
-  
+  const [status, setStatus] = useState<VideoPlayerStatus>('idle');
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    setUrlError(false);
-    setIsReady(false);
+    if (videoSource) {
+      setStatus('loading');
+    } else {
+      setStatus('idle');
+    }
   }, [videoSource]);
+
+  useEffect(() => {
+    if (status !== 'loading') return;
+
+    const timer = setTimeout(() => {
+        if (status === 'loading') {
+            setStatus('error');
+            toast({
+                title: "Video Error",
+                description: "The video took too long to load. The provider may be blocking it or the link is invalid.",
+                variant: "destructive",
+                duration: 8000,
+            });
+        }
+    }, 10000); 
+
+    return () => clearTimeout(timer);
+  }, [status, toast]);
+
 
   // Sync remote state to local player
   useEffect(() => {
-    if (!playbackState || !isReady || !playerRef.current || !user || !isMounted) {
+    if (!playbackState || status !== 'ready' || !playerRef.current || !user || !isMounted) {
       return;
     }
     
-    // Ignore stale updates
     if (playbackState.updatedAt <= lastHostUpdate.current) {
         return;
     }
 
-    // Ignore updates that we triggered ourselves
     if (playbackState.updatedBy === user.id) {
       return;
     }
 
     lastHostUpdate.current = playbackState.updatedAt;
-    
-    // Set a flag to prevent our own event handlers from firing while we sync.
     isSyncing.current = true;
 
-    // --- Sync playing state ---
     if (localIsPlaying !== playbackState.isPlaying) {
       setLocalIsPlaying(playbackState.isPlaying);
     }
 
-    // --- Sync seek time ---
     const localTime = playerRef.current.getCurrentTime() || 0;
     const remoteTime = playbackState.seekTime || 0;
 
@@ -96,23 +112,22 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     
     const syncTimeout = setTimeout(() => {
       isSyncing.current = false;
-    }, 1000); // Give it a bit more time to settle
+    }, 1000);
 
     return () => clearTimeout(syncTimeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playbackState, isReady, isMounted, user]);
+  }, [playbackState, status, isMounted, user, localIsPlaying]);
 
   useEffect(() => {
-      if (isReady && playbackState && playerRef.current) {
+      if (status === 'ready' && playbackState && playerRef.current) {
           isSyncing.current = true;
           setLocalIsPlaying(playbackState.isPlaying);
           playerRef.current.seekTo(playbackState.seekTime, 'seconds');
           setTimeout(() => { isSyncing.current = false; }, 500);
       }
-  }, [isReady, playbackState]);
+  }, [status, playbackState]);
 
   const handleReady = useCallback(() => {
-    setIsReady(true);
+    setStatus('ready');
   }, []);
 
   const handlePlay = useCallback(() => {
@@ -145,7 +160,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     if (isHost && user?.id) {
         onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
     }
-  }, [isHost, isSyncing, localIsPlaying, onPlaybackChange, user?.id]);
+  }, [isHost, localIsPlaying, onPlaybackChange, user?.id]);
   
   const handleProgress = useCallback((progress: OnProgressProps) => {
     if (isSyncing.current || !isHost || !localIsPlaying) {
@@ -167,8 +182,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  const handleUrlError = () => {
-    setUrlError(true);
+  const handleUrlError = useCallback(() => {
+    setStatus('error');
     toast({
       title: "Video Error",
       description:
@@ -176,7 +191,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
       variant: "destructive",
       duration: 8000,
     });
-  };
+  }, [toast]);
 
   const togglePlaceholderFullscreen = () => {
       if (!placeholderRef.current) return;
@@ -228,18 +243,25 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     let title = "No Video Loaded";
     let description = isHost 
       ? 'You are the host. Use the "Set Video" button to load a video for everyone.'
-      : "Waiting for the host to start a video. Click the player to activate if needed.";
+      : "Waiting for the host to start a video.";
+    let iconClassName = '';
 
-    if (urlError) {
+    if (status === 'loading') {
+        Icon = Loader2;
+        title = "Loading Video...";
+        description = "Attempting to load the video. This may take a moment."
+        iconClassName = 'animate-spin';
+    } else if (status === 'error') {
       Icon = AlertTriangle;
       title = "Video Playback Error";
-      description = "The provider is blocking playback. The host should try the 'Share Screen' feature instead.";
+      description = "The provider is blocking playback or the link is invalid. The host should try the 'Share Screen' feature instead.";
+      iconClassName = 'text-destructive';
     }
 
     return (
       <div ref={placeholderRef} className="w-full h-full bg-black/50 flex flex-col relative">
         <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground p-4">
-            <Icon className={`h-12 w-12 md:h-16 md:w-16 mb-4 ${urlError ? 'text-destructive' : ''}`} />
+            <Icon className={`h-12 w-12 md:h-16 md:w-16 mb-4 ${iconClassName}`} />
             <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
             <p className="text-base md:text-lg max-w-xl">{description}</p>
         </div>
@@ -262,32 +284,33 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   return (
     <Card className="w-full h-full bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10 relative">
       <div className="relative flex-1 bg-black group">
-        {isMounted && videoSource && !urlError ? (
-          <ReactPlayer
-            ref={playerRef}
-            key={videoSource.correctedUrl}
-            url={videoSource.correctedUrl}
-            playing={localIsPlaying}
-            controls={true}
-            width="100%"
-            height="100%"
-            onReady={handleReady}
-            onPlay={handlePlay}
-            onPause={handlePause}
-            onSeek={handleSeek}
-            onProgress={handleProgress}
-            onError={handleUrlError}
-            config={{
-              file: {
-                attributes: {
-                  crossOrigin: 'anonymous'
+        <div style={{ display: status === 'ready' ? 'block' : 'none', width: '100%', height: '100%' }}>
+          {isMounted && videoSource && (
+            <ReactPlayer
+              ref={playerRef}
+              key={videoSource.correctedUrl}
+              url={videoSource.correctedUrl}
+              playing={localIsPlaying}
+              controls={true}
+              width="100%"
+              height="100%"
+              onReady={handleReady}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onSeek={handleSeek}
+              onProgress={handleProgress}
+              onError={handleUrlError}
+              config={{
+                file: {
+                  attributes: {
+                    crossOrigin: 'anonymous'
+                  }
                 }
-              }
-            }}
-          />
-        ) : (
-           renderPlaceholder()
-        )}
+              }}
+            />
+          )}
+        </div>
+        {status !== 'ready' && renderPlaceholder()}
       </div>
     </Card>
   );
