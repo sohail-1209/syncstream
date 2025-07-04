@@ -28,7 +28,7 @@ import { DisconnectReason } from "livekit-client";
 import EmojiBar from "@/components/watch-party/emoji-bar";
 import FloatingMessages from "@/components/watch-party/floating-messages";
 import FloatingEmojis from "@/components/watch-party/floating-emojis";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader as SheetHeaderComponent, SheetTitle as SheetTitleComponent } from "@/components/ui/sheet";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
@@ -384,7 +384,7 @@ function WatchPartyContent({
             <Sheet>
                 <SheetTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></SheetTrigger>
                 <SheetContent side="bottom" className="p-4 pt-2 w-full h-auto rounded-t-lg">
-                    <DialogHeader><DialogTitle className="text-center mb-2">Menu</DialogTitle></DialogHeader>
+                    <SheetHeaderComponent><SheetTitleComponent className="text-center mb-2">Menu</SheetTitleComponent></SheetHeaderComponent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {/* Room Info */}
                         <div className="flex justify-between items-center p-2 rounded-lg bg-muted col-span-full">
@@ -485,6 +485,9 @@ function WatchPartyContent({
             {/* Mobile Sidebar - triggered from the mobile menu */}
             <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
                 <SheetContent side="right" className="p-0 w-full max-w-xs">
+                    <SheetHeaderComponent className="sr-only">
+                      <SheetTitleComponent>Chat and Participants</SheetTitleComponent>
+                    </SheetHeaderComponent>
                     <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
                 </SheetContent>
             </Sheet>
