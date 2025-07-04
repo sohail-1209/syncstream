@@ -52,59 +52,51 @@ export default function VideoPlayer({
   useEffect(() => {
     setUrlError(false);
     setIsReady(false);
-    if (playbackState) {
-        setLocalIsPlaying(playbackState.isPlaying);
-    } else {
-        setLocalIsPlaying(false);
-    }
   }, [videoSource]);
 
   // Sync remote state to local player
   useEffect(() => {
     if (!playbackState || !isReady || !playerRef.current || !user || !isMounted) {
-        return;
+      return;
     }
-    
-    // Only sync if the update is from another user
+
+    // Ignore updates that we triggered ourselves
     if (playbackState.updatedBy === user.id) {
-        return;
+      return;
     }
     
+    // Set a flag to prevent our own event handlers from firing while we sync.
     isSyncing.current = true;
 
-    // Sync playing state
+    // --- Sync playing state ---
     if (localIsPlaying !== playbackState.isPlaying) {
-        setLocalIsPlaying(playbackState.isPlaying);
+      setLocalIsPlaying(playbackState.isPlaying);
     }
 
-    // Sync seek time, with a tolerance for drift
+    // --- Sync seek time ---
     const localTime = playerRef.current.getCurrentTime() || 0;
-    const remoteTime = typeof playbackState.seekTime === 'number' ? playbackState.seekTime : 0;
-    
-    if (Math.abs(localTime - remoteTime) > 1.5) { 
-        playerRef.current.seekTo(remoteTime, 'seconds');
+    const remoteTime = playbackState.seekTime || 0;
+
+    if (Math.abs(localTime - remoteTime) > 1.5) {
+      playerRef.current.seekTo(remoteTime, 'seconds');
     }
     
-    // The isSyncing flag is reset by this timeout.
-    // This provides a reliable window for the player to update its state
-    // without its event handlers (onPlay, onPause) creating a feedback loop.
     const syncTimeout = setTimeout(() => {
-      if (isSyncing.current) {
-        isSyncing.current = false;
-      }
+      isSyncing.current = false;
     }, 500);
 
     return () => clearTimeout(syncTimeout);
-
-  }, [playbackState, isReady, user, localIsPlaying, isMounted]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playbackState, isReady, isMounted, user]);
 
   const handleReady = useCallback(() => {
     setIsReady(true);
     if (playbackState && playerRef.current) {
+        // When the player is ready, it should immediately adopt the host's state.
         isSyncing.current = true;
-        playerRef.current.seekTo(playbackState.seekTime, 'seconds');
         setLocalIsPlaying(playbackState.isPlaying);
+        playerRef.current.seekTo(playbackState.seekTime, 'seconds');
+        setTimeout(() => { isSyncing.current = false; }, 500); // Release lock after sync
     }
   }, [playbackState]);
 
@@ -143,17 +135,14 @@ export default function VideoPlayer({
   
   const handleProgress = useCallback((progress: OnProgressProps) => {
     if (isSyncing.current) {
-      // If we are in the middle of a programmatic sync, do not send updates.
       return;
     }
     
-    // Only the host should send periodic updates to avoid conflicts.
     if (!isHost || !localIsPlaying) {
       return;
     }
 
     const now = Date.now();
-    // Throttle updates to every 5 seconds to avoid spamming the database
     if (now - lastProgressUpdate.current > 5000) {
       lastProgressUpdate.current = now;
       onPlaybackChange({ isPlaying: true, seekTime: progress.playedSeconds });
