@@ -112,39 +112,25 @@ export default function VideoPlayer({
   const handlePlay = useCallback(() => {
     if (isSyncing.current) return;
     
-    if (!isHost) {
-      // For non-hosts, we let them play locally to satisfy browser autoplay policies,
-      // but we don't send updates. The sync logic will eventually correct their state
-      // to match the host's.
-      if (!localIsPlaying) {
-        setLocalIsPlaying(true);
-      }
-      return;
-    }
-
+    // Allow the initial click for non-hosts to satisfy browser autoplay policies
     if (!localIsPlaying) {
-      setLocalIsPlaying(true);
-      if (user?.id) {
-        onPlaybackChange({ isPlaying: true, seekTime: playerRef.current?.getCurrentTime() || 0 });
-      }
+        setLocalIsPlaying(true);
+    }
+    
+    if (isHost && user?.id) {
+      onPlaybackChange({ isPlaying: true, seekTime: playerRef.current?.getCurrentTime() || 0 });
     }
   }, [isHost, localIsPlaying, onPlaybackChange, user?.id]);
 
   const handlePause = useCallback(() => {
     if (isSyncing.current) return;
     
-    if (!isHost) {
-       if (localIsPlaying) {
-        setLocalIsPlaying(false);
-      }
-      return;
-    }
-    
     if (localIsPlaying) {
-      setLocalIsPlaying(false);
-      if (user?.id) {
-        onPlaybackChange({ isPlaying: false, seekTime: playerRef.current?.getCurrentTime() || 0 });
-      }
+        setLocalIsPlaying(false);
+    }
+
+    if (isHost && user?.id) {
+      onPlaybackChange({ isPlaying: false, seekTime: playerRef.current?.getCurrentTime() || 0 });
     }
   }, [isHost, localIsPlaying, onPlaybackChange, user?.id]);
 
@@ -269,38 +255,38 @@ export default function VideoPlayer({
   }
   
   return (
-    <Card className="w-full h-full bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10">
+    <Card className="w-full h-full bg-card flex flex-col overflow-hidden shadow-2xl shadow-primary/10 relative">
       <div className="relative flex-1 bg-black group">
         {isMounted && videoSource && !urlError ? (
-          <>
-            <ReactPlayer
-              ref={playerRef}
-              key={videoSource.correctedUrl}
-              url={videoSource.correctedUrl}
-              playing={localIsPlaying}
-              controls={isHost}
-              width="100%"
-              height="100%"
-              onReady={handleReady}
-              onPlay={handlePlay}
-              onPause={handlePause}
-              onSeek={handleSeek}
-              onProgress={handleProgress}
-              onError={handleUrlError}
-              config={{
-                file: {
-                  attributes: {
-                    crossOrigin: 'anonymous'
-                  }
+          <ReactPlayer
+            ref={playerRef}
+            key={videoSource.correctedUrl}
+            url={videoSource.correctedUrl}
+            playing={localIsPlaying}
+            controls={true}
+            width="100%"
+            height="100%"
+            onReady={handleReady}
+            onPlay={handlePlay}
+            onPause={handlePause}
+            onSeek={handleSeek}
+            onProgress={handleProgress}
+            onError={handleUrlError}
+            config={{
+              file: {
+                attributes: {
+                  crossOrigin: 'anonymous'
                 }
-              }}
-            />
-            <EmojiBar onSyncToHost={handleSyncToHost} isHost={isHost} isReady={isReady} />
-          </>
+              }
+            }}
+          />
         ) : (
            renderPlaceholder()
         )}
       </div>
+      {isMounted && videoSource && !urlError && (
+        <EmojiBar onSyncToHost={handleSyncToHost} isHost={isHost} isReady={isReady} />
+      )}
     </Card>
   );
 }
