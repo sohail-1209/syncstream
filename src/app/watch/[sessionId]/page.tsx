@@ -503,13 +503,37 @@ function WatchPartyContent({
             </Sheet>
         </div>
     );
+    
+    if (isFullscreen && isMobile) {
+        return (
+             <div ref={pageRef} className="relative h-svh w-svw bg-black">
+                 {activeSharer ? (
+                    <LiveKitStage sharerId={activeSharer}/>
+                 ) : (
+                    <VideoPlayer 
+                        ref={videoPlayerRef}
+                        videoSource={videoSource}
+                        playbackState={playbackState}
+                        onPlaybackChange={handlePlaybackChange}
+                        user={user}
+                        isHost={isHost}
+                        onStatusChange={setPlayerStatus}
+                    />
+                 )}
+                 {(videoSource || activeSharer) && (
+                   <div className="absolute inset-0 pointer-events-none">
+                       <EmojiBar sessionId={sessionId} user={user} isHost={isHost} onSync={handleSyncToHostClick} />
+                       <FloatingMessages sessionId={sessionId} user={user} />
+                       <FloatingEmojis sessionId={sessionId} />
+                   </div>
+                 )}
+            </div>
+        )
+    }
 
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
-            <header className={cn(
-                "relative flex items-center justify-between px-2 sm:px-4 py-2 border-b z-50",
-                isFullscreen && isMobile && "hidden"
-            )}>
+            <header className="relative flex items-center justify-between px-2 sm:px-4 py-2 border-b z-50">
                 <Link href="/" className="flex items-center gap-2">
                     <Logo className="h-8 w-8 text-primary" />
                     <span className="font-bold text-xl font-headline hidden sm:inline">SyncStream</span>
@@ -519,16 +543,12 @@ function WatchPartyContent({
                 {renderMobileControls()}
             </header>
             <main className={cn(
-                "flex-1 flex flex-col md:grid md:grid-rows-[minmax(0,1fr)] gap-4 overflow-hidden",
-                isFullscreen && isMobile ? "p-0" : "p-2 md:p-4",
+                "flex-1 flex flex-col md:grid md:grid-rows-[minmax(0,1fr)] gap-4 overflow-hidden p-2 md:p-4",
                 isSidebarOpen
                     ? "md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px]"
                     : "md:grid-cols-1"
             )}>
-                <div className={cn(
-                    "relative md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink md:h-full min-h-0 md:aspect-auto",
-                    isMobile && isFullscreen ? "aspect-auto" : "aspect-video"
-                )}>
+                <div className="relative md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink md:h-full min-h-0 aspect-video md:aspect-auto">
                    {activeSharer ? (
                         <LiveKitStage sharerId={activeSharer}/>
                    ) : (
