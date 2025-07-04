@@ -15,10 +15,10 @@ export default function Sidebar({ sessionId, user, hostId }: { sessionId: string
             <TabsTrigger value="participants">Participants</TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="chat" className="flex-1 overflow-y-auto mt-0">
+        <TabsContent value="chat" className="flex-1 mt-0 flex flex-col min-h-0">
           <ChatPanel sessionId={sessionId} user={user} />
         </TabsContent>
-        <TabsContent value="participants" className="flex-1 overflow-y-auto mt-0">
+        <TabsContent value="participants" className="flex-1 mt-0 flex flex-col min-h-0">
           <ParticipantsPanel sessionId={sessionId} hostId={hostId} />
         </TabsContent>
       </Tabs>

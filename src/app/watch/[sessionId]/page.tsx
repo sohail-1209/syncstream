@@ -458,7 +458,7 @@ function WatchPartyContent({
                 {renderMobileControls()}
             </header>
             <main className={cn(
-                "flex-1 flex flex-col md:grid gap-4 p-2 md:p-4",
+                "flex-1 flex flex-col md:grid md:grid-rows-[minmax(0,1fr)] gap-4 p-2 md:p-4",
                 isSidebarOpen
                     ? "md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px]"
                     : "md:grid-cols-1"
