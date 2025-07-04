@@ -348,18 +348,18 @@ function WatchPartyContent({
 
             {/* Right Controls */}
             <div className="flex-1 flex justify-end items-center gap-1">
-                <Button variant={isHost ? 'default' : 'outline'} size="icon" onClick={onHostButtonClick} disabled={isClaimingHost}>
+                <Button variant={isHost ? 'default' : 'outline'} size="sm" className="h-8" onClick={onHostButtonClick} disabled={isClaimingHost}>
                     {isClaimingHost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
-                    <span className="sr-only">{isHost ? 'Abdicate Host' : 'Become Host'}</span>
+                    <span className="hidden lg:inline">{isHost ? 'Abdicate Host' : 'Become Host'}</span>
                 </Button>
-                <RecommendationsModal><Button variant="outline" size="icon" className="md:w-auto md:px-4"><Wand2 className="h-4 w-4" /><span className="hidden md:inline">AI Recs</span></Button></RecommendationsModal>
-                <Button variant="outline" size="icon" onClick={handleShareScreen} disabled={isTogglingShare}>
+                <RecommendationsModal><Button variant="outline" size="sm" className="h-8"><Wand2 className="h-4 w-4" /><span className="hidden lg:inline">AI Recs</span></Button></RecommendationsModal>
+                <Button variant="outline" size="sm" className="h-8" onClick={handleShareScreen} disabled={isTogglingShare}>
                     {isTogglingShare ? <Loader2 className="h-4 w-4 animate-spin" /> : (amSharing ? <VideoOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />)}
-                    <span className="sr-only">{amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
+                    <span className="hidden lg:inline">{amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
                 </Button>
-                {localParticipant && <Button variant="outline" size="icon" onClick={handleToggleMic}>{isMicMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button>}
+                {localParticipant && <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleToggleMic}>{isMicMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button>}
                 <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
-                    <PopoverTrigger asChild><Button variant="outline" size="icon" disabled={!isHost}><LinkIcon className="h-4 w-4" /></Button></PopoverTrigger>
+                    <PopoverTrigger asChild><Button variant="outline" size="icon" className="h-8 w-8" disabled={!isHost}><LinkIcon className="h-4 w-4" /></Button></PopoverTrigger>
                     <PopoverContent className="w-80">
                         <div className="space-y-2"><h4 className="font-medium">Set Video</h4><p className="text-sm text-muted-foreground">Paste a video link. Direct links work best.</p></div>
                         <div className="flex items-center gap-2 mt-2"><Input value={tempUrl} onChange={(e) => setTempUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()} disabled={isPending} /><Button onClick={handleSetVideo} size="sm" disabled={isPending}>{isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load"}</Button></div>
@@ -367,29 +367,24 @@ function WatchPartyContent({
                     </PopoverContent>
                 </Popover>
                 <Popover>
-                    <PopoverTrigger asChild><Button size="icon" className="md:w-auto md:px-4"><Users className="h-4 w-4" /><span className="hidden md:inline">Invite</span></Button></PopoverTrigger>
+                    <PopoverTrigger asChild><Button size="sm" className="h-8"><Users className="h-4 w-4" /><span className="hidden lg:inline">Invite</span></Button></PopoverTrigger>
                     <PopoverContent className="w-[90vw] sm:w-80">
                         <div className="space-y-2"><h4 className="font-medium">Invite friends</h4><p className="text-sm text-muted-foreground">Share this link to invite others.</p></div>
                         <div className="flex items-center gap-2 mt-2"><Input value={inviteLink} readOnly /><Button variant="outline" size="icon" onClick={handleCopyInvite}><Copy className="h-4 w-4" /></Button></div>
                     </PopoverContent>
                 </Popover>
-                <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>{isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}</Button>
-                <Button variant="outline" size="icon" onClick={handleExitRoom}><LogOut className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>{isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}</Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleExitRoom}><LogOut className="h-4 w-4" /></Button>
             </div>
         </div>
     );
 
     const renderMobileControls = () => (
         <div className="flex items-center gap-1 md:hidden">
-            <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-                <SheetTrigger asChild><Button variant="outline" size="icon"><MessageSquare className="h-4 w-4" /></Button></SheetTrigger>
-                <SheetContent side="right" className="p-0 w-full max-w-xs"><Sidebar sessionId={sessionId} user={user} hostId={hostId} /></SheetContent>
-            </Sheet>
-
             <Sheet>
-                <SheetTrigger asChild><Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button></SheetTrigger>
+                <SheetTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></SheetTrigger>
                 <SheetContent side="bottom" className="p-4 pt-2 w-full h-auto rounded-t-lg">
-                    <DialogHeader><DialogTitle className="text-center mb-2">Controls</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="text-center mb-2">Menu</DialogTitle></DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {/* Room Info */}
                         <div className="flex justify-between items-center p-2 rounded-lg bg-muted col-span-full">
@@ -405,6 +400,9 @@ function WatchPartyContent({
                            )}
                         </div>
                         {/* Actions */}
+                        <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setIsMobileSidebarOpen(true)}>
+                            <MessageSquare /> Chat / Participants
+                        </Button>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={onHostButtonClick} disabled={isClaimingHost}>{isClaimingHost ? <Loader2 className="animate-spin" /> : <Crown />} {isHost ? 'Abdicate Host' : 'Become Host'}</Button>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={handleShareScreen} disabled={isTogglingShare}>{isTogglingShare ? <Loader2 className="animate-spin" /> : (amSharing ? <VideoOff /> : <ScreenShare />)} {amSharing ? 'Stop Sharing' : 'Share Screen'}</Button>
                         <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
@@ -426,11 +424,15 @@ function WatchPartyContent({
                         <RecommendationsModal><Button variant="outline" className="w-full justify-start gap-2"><Wand2 /> AI Recs</Button></RecommendationsModal>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={toggleFullscreen}>{isFullscreen ? <Minimize /> : <Maximize />} {isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</Button>
                         {!isHost && (videoSource || activeSharer) && <Button variant="outline" className="w-full justify-start gap-2" onClick={handleSyncToHostClick}><RefreshCw /> Sync to Host</Button>}
+                        
+                        <div className="col-span-full pt-2">
+                           <Button variant="destructive" className="w-full justify-center gap-2" onClick={handleExitRoom}>
+                               <LogOut /> Exit Room
+                           </Button>
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>
-
-            <Button variant="outline" size="icon" onClick={handleExitRoom}><LogOut className="h-4 w-4" /></Button>
         </div>
     );
 
@@ -479,6 +481,14 @@ function WatchPartyContent({
                     <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
                 </div>
             </main>
+
+            {/* Mobile Sidebar - triggered from the mobile menu */}
+            <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+                <SheetContent side="right" className="p-0 w-full max-w-xs">
+                    <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
+                </SheetContent>
+            </Sheet>
+
             <Dialog open={isHostPromptOpen} onOpenChange={setIsHostPromptOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -677,3 +687,4 @@ export default function WatchPartyPage() {
         </div>
     );
 }
+
