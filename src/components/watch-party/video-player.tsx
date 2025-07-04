@@ -300,13 +300,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
               onSeek={handleSeek}
               onProgress={handleProgress}
               onError={handleUrlError}
-              config={{
-                file: {
-                  attributes: {
-                    crossOrigin: 'anonymous'
-                  }
-                }
-              }}
             />
           )}
         </div>
