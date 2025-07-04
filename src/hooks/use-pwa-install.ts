@@ -19,6 +19,7 @@ export function usePwaInstall() {
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
+      console.log('`beforeinstallprompt` event has fired.');
       event.preventDefault();
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
@@ -31,11 +32,12 @@ export function usePwaInstall() {
   }, []);
 
   const handleInstall = async () => {
+    console.log('Install button clicked. Current install prompt:', installPrompt);
     if (!installPrompt) {
         toast({
             variant: 'destructive',
             title: 'Installation Not Available',
-            description: 'Your browser may not support installation, or the app might already be installed.'
+            description: 'The app is not ready to be installed. This might be because your browser does not support it, or it is already installed.'
         });
         return;
     };
@@ -48,11 +50,9 @@ export function usePwaInstall() {
             title: 'Installation Complete!',
             description: 'The app has been added to your home screen.'
         });
-    } else {
-        // Silently fail if dismissed, as it's a common user action.
     }
     setInstallPrompt(null);
   };
 
-  return { canInstall: !!installPrompt, handleInstall };
+  return { handleInstall };
 }
