@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -50,12 +51,14 @@ Your task is to correct the URL if needed, and determine the video platform.
 - For 'direct' links, the 'videoId' field MUST be null.
 - For 'unknown' links, the 'videoId' field MUST be null.
 - For 'youtube' or 'vimeo', you MUST extract the video ID.
+- For YouTube URLs, the 'correctedUrl' MUST only contain the 'v' parameter. Remove all other parameters like 'list', 'index', 't', 'si', etc. to ensure clean playback.
 - Be generous in identifying 'direct' links. URLs from video CDNs or with streaming terms (like .m3u8, hls, dash) should be 'direct'.
 - Social media links (Instagram, Facebook, etc.) are 'unknown'.
 - Correct any obvious typos in the URL.
 
 **EXAMPLES:**
 - Input: "htps://www.youtub.com/w?v=dQw4w9WgXcQ" -> Output: { platform: 'youtube', videoId: 'dQw4w9WgXcQ', correctedUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }
+- Input: "https://www.youtube.com/watch?v=Qdz5n1Xe5Qo&list=RDorYf6VDtj_k&index=3" -> Output: { platform: 'youtube', videoId: 'Qdz5n1Xe5Qo', correctedUrl: "https://www.youtube.com/watch?v=Qdz5n1Xe5Qo" }
 - Input: "vimeo com/12345678" -> Output: { platform: 'vimeo', videoId: '12345678', correctedUrl: "https://vimeo.com/12345678" }
 - Input: "https://example.com/my_awesome_video.mp4" -> Output: { platform: 'direct', videoId: null, correctedUrl: "https://example.com/my_awesome_video.mp4" }
 - Input: "https://ww7.vcdnlare.com/v/LWTpVmvwsWHiyEN?sid=6191&t=hls" -> Output: { platform: 'direct', videoId: null, correctedUrl: "https://ww7.vcdnlare.com/v/LWTpVmvwsWHiyEN?sid=6191&t=hls" }
