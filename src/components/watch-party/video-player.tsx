@@ -296,7 +296,7 @@ export default function VideoPlayer({
               }}
             />
             {!isHost && isReady && (
-              <div className="absolute bottom-20 left-4 z-20 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg">
+              <div className="absolute bottom-20 left-4 z-50 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg">
                   <Button onClick={handleSyncToHost} variant="secondary" size="sm">
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Sync to Host
