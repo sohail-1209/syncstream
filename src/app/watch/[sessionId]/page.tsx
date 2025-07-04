@@ -399,7 +399,7 @@ function WatchPartyContent({
             )}
             <Sheet>
                 <SheetTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></SheetTrigger>
-                <SheetContent side="bottom" className="p-4 pt-2 w-full h-auto rounded-t-lg">
+                <SheetContent side="bottom" className="p-4 pt-2 w-full h-auto rounded-t-lg" container={pageRef.current}>
                     <SheetHeaderComponent><SheetTitleComponent className="text-center mb-2">Menu</SheetTitleComponent></SheetHeaderComponent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {/* Room Info */}
@@ -494,7 +494,7 @@ function WatchPartyContent({
 
             {/* Mobile Sidebar - triggered from the mobile menu */}
             <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-                <SheetContent side="right" className="p-0 w-full max-w-xs flex flex-col">
+                <SheetContent side="right" className="p-0 w-full max-w-xs flex flex-col" container={pageRef.current}>
                     <SheetHeaderComponent className="p-4 border-b flex-shrink-0">
                       <SheetTitleComponent>Chat and Participants</SheetTitleComponent>
                     </SheetHeaderComponent>
