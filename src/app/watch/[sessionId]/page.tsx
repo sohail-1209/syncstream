@@ -28,7 +28,7 @@ import { DisconnectReason } from "livekit-client";
 import EmojiBar from "@/components/watch-party/emoji-bar";
 import FloatingMessages from "@/components/watch-party/floating-messages";
 import FloatingEmojis from "@/components/watch-party/floating-emojis";
-import { Sheet, SheetContent, SheetTrigger, SheetHeader as SheetHeaderComponent, SheetTitle as SheetTitleComponent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader as SheetHeaderComponent, SheetTitle as SheetTitleComponent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 
@@ -458,7 +458,7 @@ function WatchPartyContent({
                 {renderMobileControls()}
             </header>
             <main className={cn(
-                "flex-1 flex flex-col md:grid md:grid-rows-[minmax(0,1fr)] gap-4 p-2 md:p-4",
+                "flex-1 flex flex-col md:grid md:grid-rows-[minmax(0,1fr)] gap-4 p-2 md:p-4 overflow-hidden",
                 isSidebarOpen
                     ? "md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px]"
                     : "md:grid-cols-1"
@@ -498,7 +498,9 @@ function WatchPartyContent({
                     <SheetHeaderComponent className="p-4 border-b flex-shrink-0">
                       <SheetTitleComponent>Chat and Participants</SheetTitleComponent>
                     </SheetHeaderComponent>
-                    <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
+                    <div className="flex-1 min-h-0">
+                        <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
+                    </div>
                 </SheetContent>
             </Sheet>
 
