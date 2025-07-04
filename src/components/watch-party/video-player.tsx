@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import EmojiBar from "./emoji-bar";
-import { Film, AlertTriangle, Maximize, Minimize } from "lucide-react";
+import { Film, AlertTriangle, Maximize, Minimize, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useRef, useCallback } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -109,7 +109,16 @@ export default function VideoPlayer({
 
   const handlePlay = useCallback(() => {
     if (isSyncing.current) return;
-    if (!isHost) return;
+    
+    if (!isHost) {
+        // For non-hosts, we let them click to play locally to satisfy browser
+        // autoplay policies, but we don't sync this action. The next sync
+        // from the host will correct their state if needed.
+        if (!localIsPlaying) {
+          setLocalIsPlaying(true);
+        }
+        return;
+    }
 
     if (!localIsPlaying) {
       setLocalIsPlaying(true);
@@ -121,7 +130,14 @@ export default function VideoPlayer({
 
   const handlePause = useCallback(() => {
     if (isSyncing.current) return;
-    if (!isHost) return;
+    
+    if (!isHost) {
+        // Non-hosts can pause locally, but it won't affect others.
+        if (localIsPlaying) {
+          setLocalIsPlaying(false);
+        }
+        return;
+    }
     
     if (localIsPlaying) {
       setLocalIsPlaying(false);
@@ -191,11 +207,37 @@ export default function VideoPlayer({
           }
       }
   };
+  
+  const handleSyncToHost = () => {
+    if (!playbackState || !playerRef.current) {
+        toast({
+            variant: "destructive",
+            title: "Sync Failed",
+            description: "No host playback data available to sync to.",
+        });
+        return;
+    }
+    
+    isSyncing.current = true;
+    playerRef.current.seekTo(playbackState.seekTime, 'seconds');
+    setLocalIsPlaying(playbackState.isPlaying);
+
+    toast({
+        title: "Synced!",
+        description: `Jumped to host's current position.`,
+    });
+
+    setTimeout(() => {
+      isSyncing.current = false;
+    }, 1000);
+  };
 
   const renderPlaceholder = () => {
     let Icon = Film;
     let title = "No Video Loaded";
-    let description = isHost ? 'The host can use the "Set Video" or "Share Screen" buttons to start.' : "Waiting for the host to start a video...";
+    let description = isHost 
+      ? 'You are the host. Use the "Set Video" or "Share Screen" buttons to start.' 
+      : "Waiting for the host to start a video...";
 
     if (urlError) {
       Icon = AlertTriangle;
@@ -253,6 +295,14 @@ export default function VideoPlayer({
                 }
               }}
             />
+            {!isHost && isReady && (
+              <div className="absolute bottom-4 left-4 z-20 opacity-80 hover:opacity-100 transition-opacity">
+                  <Button onClick={handleSyncToHost} variant="secondary" size="sm">
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Sync to Host
+                  </Button>
+              </div>
+            )}
             <EmojiBar />
           </>
         ) : (
