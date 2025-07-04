@@ -494,19 +494,21 @@ function WatchPartyContent({
                    {activeSharer ? (
                         <LiveKitStage sharerId={activeSharer}/>
                    ) : (
-                        <div className="relative w-full h-full">
-                            <VideoPlayer 
-                                ref={videoPlayerRef}
-                                videoSource={videoSource}
-                                playbackState={playbackState}
-                                onPlaybackChange={handlePlaybackChange}
-                                user={user}
-                                isHost={isHost}
-                            />
-                            {videoSource && <EmojiBar sessionId={sessionId} user={user} />}
-                            {videoSource && <FloatingMessages sessionId={sessionId} user={user} />}
-                            {videoSource && <FloatingEmojis sessionId={sessionId} />}
-                        </div>
+                        <VideoPlayer 
+                            ref={videoPlayerRef}
+                            videoSource={videoSource}
+                            playbackState={playbackState}
+                            onPlaybackChange={handlePlaybackChange}
+                            user={user}
+                            isHost={isHost}
+                        />
+                   )}
+                   {(videoSource || activeSharer) && (
+                       <>
+                           <EmojiBar sessionId={sessionId} user={user} />
+                           <FloatingMessages sessionId={sessionId} user={user} />
+                           <FloatingEmojis sessionId={sessionId} />
+                       </>
                    )}
                 </div>
                 <div className={cn(
