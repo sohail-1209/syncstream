@@ -28,7 +28,7 @@ export default function EmojiBar({ sessionId, user }: { sessionId: string; user:
   };
 
   return (
-    <div className="absolute bottom-20 right-4 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg flex gap-1 z-50 items-center">
+    <div className="absolute top-1/2 -translate-y-1/2 right-4 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg flex flex-col gap-2 z-50">
       {EMOJIS.map((emoji) => (
         <Button
           key={emoji}
