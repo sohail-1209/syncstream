@@ -85,10 +85,10 @@ export default function ChatPanel({ sessionId, user }: { sessionId: string; user
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <ScrollArea className="flex-1" ref={scrollAreaRef}>
-        <div className="flex flex-col justify-end min-h-full p-4">
-            <div className="space-y-4">
+    <div className="flex flex-col flex-1 min-h-0">
+      <ScrollArea className="flex-grow" ref={scrollAreaRef}>
+        <div className="flex flex-col justify-end min-h-full">
+            <div className="space-y-4 p-4">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
@@ -125,7 +125,7 @@ export default function ChatPanel({ sessionId, user }: { sessionId: string; user
             </div>
         </div>
       </ScrollArea>
-      <div className="p-4 border-t">
+      <div className="p-4 border-t flex-shrink-0">
         <form onSubmit={handleSendMessage} className="flex items-center gap-2">
           <Input
             value={newMessage}

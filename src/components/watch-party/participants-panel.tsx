@@ -45,7 +45,7 @@ export default function ParticipantsPanel({ sessionId, hostId }: { sessionId: st
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="flex-1">
       <div className="p-4 space-y-4">
         {participants.map(p => (
             <div key={p.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
