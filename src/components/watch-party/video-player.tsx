@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import EmojiBar from "./emoji-bar";
-import { Film, AlertTriangle, Maximize, Minimize, RefreshCw } from "lucide-react";
+import { Film, AlertTriangle, Maximize, Minimize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useRef, useCallback } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -295,15 +295,7 @@ export default function VideoPlayer({
                 }
               }}
             />
-            {!isHost && isReady && (
-              <div className="absolute bottom-20 left-4 z-50 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg">
-                  <Button onClick={handleSyncToHost} variant="secondary" size="sm">
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Sync to Host
-                  </Button>
-              </div>
-            )}
-            <EmojiBar />
+            <EmojiBar onSyncToHost={handleSyncToHost} isHost={isHost} isReady={isReady} />
           </>
         ) : (
            renderPlaceholder()
