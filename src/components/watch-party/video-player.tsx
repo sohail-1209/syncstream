@@ -18,26 +18,28 @@ type PlaybackState = {
   updatedAt: number;
 } | null;
 
+export type VideoPlayerStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 type VideoPlayerProps = { 
   videoSource: ProcessVideoUrlOutput | null;
   playbackState: PlaybackState;
   onPlaybackChange: (newState: { isPlaying: boolean, seekTime: number }) => void;
   user: LocalUser | null;
   isHost: boolean;
+  onStatusChange: (status: VideoPlayerStatus) => void;
 };
 
 export interface VideoPlayerRef {
   syncToHost: () => void;
 }
 
-type VideoPlayerStatus = 'idle' | 'loading' | 'ready' | 'error';
-
 const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer({ 
   videoSource,
   playbackState,
   onPlaybackChange,
   user,
-  isHost
+  isHost,
+  onStatusChange
 }, ref) {
   const { toast } = useToast();
   const playerRef = useRef<ReactPlayer>(null);
@@ -51,6 +53,13 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const placeholderRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<VideoPlayerStatus>('idle');
   const [playerConfig, setPlayerConfig] = useState({});
+
+  const handleStatusChange = useCallback((newStatus: VideoPlayerStatus) => {
+    setStatus(newStatus);
+    if (onStatusChange) {
+        onStatusChange(newStatus);
+    }
+  }, [onStatusChange]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -70,18 +79,18 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
 
   useEffect(() => {
     if (videoSource) {
-      setStatus('loading');
+      handleStatusChange('loading');
     } else {
-      setStatus('idle');
+      handleStatusChange('idle');
     }
-  }, [videoSource]);
+  }, [videoSource, handleStatusChange]);
 
   useEffect(() => {
     if (status !== 'loading') return;
 
     const timer = setTimeout(() => {
         if (status === 'loading') {
-            setStatus('error');
+            handleStatusChange('error');
             toast({
                 title: "Video Error",
                 description: "The video took too long to load. The provider may be blocking it or the link is invalid.",
@@ -92,7 +101,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     }, 10000); 
 
     return () => clearTimeout(timer);
-  }, [status, toast]);
+  }, [status, toast, handleStatusChange]);
 
 
   // Sync remote state to local player
@@ -140,8 +149,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   }, [status, playbackState]);
 
   const handleReady = useCallback(() => {
-    setStatus('ready');
-  }, []);
+    handleStatusChange('ready');
+  }, [handleStatusChange]);
 
   const handlePlay = useCallback(() => {
     if (isSyncing.current) return;
@@ -196,7 +205,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   }, []);
 
   const handleUrlError = useCallback(() => {
-    setStatus('error');
+    handleStatusChange('error');
     toast({
       title: "Video Error",
       description:
@@ -204,7 +213,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
       variant: "destructive",
       duration: 8000,
     });
-  }, [toast]);
+  }, [toast, handleStatusChange]);
 
   const togglePlaceholderFullscreen = () => {
       if (!placeholderRef.current) return;

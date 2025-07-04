@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/icons";
-import VideoPlayer, { type VideoPlayerRef } from "@/components/watch-party/video-player";
+import VideoPlayer, { type VideoPlayerRef, type VideoPlayerStatus } from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
 import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare, MoreVertical, RotateCw } from "lucide-react";
@@ -97,6 +97,17 @@ function WatchPartyContent({
     const [hostPassword, setHostPassword] = useState('');
     const [isClaimingHost, startClaimHostTransition] = useTransition();
     const videoPlayerRef = useRef<VideoPlayerRef>(null);
+
+    const [playerStatus, setPlayerStatus] = useState<VideoPlayerStatus>('idle');
+
+    useEffect(() => {
+        if (playerStatus === 'ready' && videoSource) {
+            toast({
+                title: "Video Loaded!",
+                description: `Playing from ${videoSource.platform}.`
+            });
+        }
+    }, [playerStatus, videoSource, toast]);
 
     const handleSyncToHostClick = () => {
         videoPlayerRef.current?.syncToHost();
@@ -228,10 +239,6 @@ function WatchPartyContent({
                 await setVideoSourceForSession(sessionId, result.data);
                 setIsSetVideoDialogOpen(false);
                 setTempUrl('');
-                toast({
-                  title: "Video Loaded!",
-                  description: `Playing from ${result.data.platform}.`
-                })
             }
         });
     };
@@ -507,6 +514,7 @@ function WatchPartyContent({
                             onPlaybackChange={handlePlaybackChange}
                             user={user}
                             isHost={isHost}
+                            onStatusChange={setPlayerStatus}
                         />
                    )}
                    {(videoSource || activeSharer) && (
