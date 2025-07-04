@@ -29,6 +29,7 @@ import EmojiBar from "@/components/watch-party/emoji-bar";
 import FloatingMessages from "@/components/watch-party/floating-messages";
 import FloatingEmojis from "@/components/watch-party/floating-emojis";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader as SheetHeaderComponent, SheetTitle as SheetTitleComponent } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
@@ -81,6 +82,7 @@ function WatchPartyContent({
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const pageRef = useRef<HTMLDivElement>(null);
+    const isMobile = useIsMobile();
     
     // LiveKit state
     const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
@@ -205,6 +207,16 @@ function WatchPartyContent({
     };
 
     const handleShareScreen = async () => {
+       if (isMobile && !activeSharer) {
+            toast({
+                variant: 'destructive',
+                title: 'Unsupported Feature',
+                description: "Screen sharing is not supported on most mobile browsers. Please use a desktop browser.",
+                duration: 5000,
+            });
+            return;
+       }
+
        startShareToggleTransition(async () => {
            if (activeSharer) { // Someone is sharing
                if (amSharing || isHost) {
@@ -479,7 +491,7 @@ function WatchPartyContent({
             {/* Mobile Sidebar - triggered from the mobile menu */}
             <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
                 <SheetContent side="right" className="p-0 w-full max-w-xs">
-                    <SheetHeaderComponent className="sr-only">
+                    <SheetHeaderComponent className="p-4 border-b">
                       <SheetTitleComponent>Chat and Participants</SheetTitleComponent>
                     </SheetHeaderComponent>
                     <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
