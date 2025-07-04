@@ -78,12 +78,13 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   }, [isMounted]);
 
   useEffect(() => {
-    if (videoSource) {
+    if (videoSource?.correctedUrl) {
       handleStatusChange('loading');
     } else {
       handleStatusChange('idle');
     }
-  }, [videoSource, handleStatusChange]);
+  }, [videoSource?.correctedUrl, handleStatusChange]);
+
 
   useEffect(() => {
     if (status !== 'loading') return;
