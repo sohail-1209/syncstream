@@ -32,7 +32,6 @@ import { Sheet, SheetContent, SheetHeader as SheetHeaderComponent, SheetTitle as
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileSidebar from "@/components/watch-party/mobile-sidebar";
 
-
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
 type PlaybackState = {
   isPlaying: boolean;

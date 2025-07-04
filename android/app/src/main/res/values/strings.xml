@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SyncStream</string>
+    <string name="title_activity_main">SyncStream</string>
+    <string name="package_name">com.syncstream.app</string>
+    <string name="custom_url_scheme">com.syncstream.app</string>
+</resources>
