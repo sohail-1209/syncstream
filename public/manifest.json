@@ -3,44 +3,30 @@
   "short_name": "SyncStream",
   "description": "Your shared screen, perfectly in sync. Create private watch parties, chat in real-time, and get AI-powered recommendations for what to watch next.",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
-  "orientation": "any",
   "background_color": "#141218",
-  "theme_color": "#4B0082",
+  "theme_color": "#141218",
   "icons": [
     {
-      "src": "/syncstream-icon.svg",
+      "src": "icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/syncstream-icon.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/syncstream-icon.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "type": "image/svg+xml"
     }
   ],
-  "screenshots" : [
+  "screenshots": [
     {
-      "src": "https://placehold.co/1080x1920.png",
+      "src": "https://placehold.co/1280x720.png",
       "type": "image/png",
-      "sizes": "1080x1920",
-      "form_factor": "narrow",
-      "label": "Watch Party Room"
+      "sizes": "1280x720",
+      "form_factor": "wide",
+      "label": "SyncStream Desktop View"
     },
     {
-      "src": "https://placehold.co/1920x1080.png",
+      "src": "https://placehold.co/720x1280.png",
       "type": "image/png",
-      "sizes": "1920x1080",
-      "form_factor": "wide",
-      "label": "Watch Party Room - Desktop"
+      "sizes": "720x1280",
+      "label": "SyncStream Mobile View"
     }
   ]
 }
