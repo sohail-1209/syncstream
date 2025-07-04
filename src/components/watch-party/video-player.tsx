@@ -3,7 +3,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Film, AlertTriangle, Maximize, Minimize } from "lucide-react";
+import { Film, AlertTriangle, Maximize, Minimize, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -49,6 +49,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const [urlError, setUrlError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isPlaceholderFullscreen, setIsPlaceholderFullscreen] = useState(false);
+  const [isRotated, setIsRotated] = useState(false);
   const placeholderRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -159,17 +160,47 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     }
   }, [isHost, localIsPlaying, onPlaybackChange]);
 
+  const handleRotate = async () => {
+    if (!placeholderRef.current) return;
+    try {
+        if (!document.fullscreenElement) {
+            await placeholderRef.current.requestFullscreen();
+        }
+        // This is an experimental feature and might not work on all browsers/devices
+        if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock('landscape');
+            setIsRotated(true);
+        } else {
+            throw new Error("Screen Orientation API not supported.");
+        }
+    } catch (err) {
+        console.error("Could not lock orientation:", err);
+        toast({
+            variant: 'destructive',
+            title: 'Rotation Failed',
+            description: 'Your browser may not support screen rotation, or it might require being in fullscreen mode first.'
+        });
+    }
+  };
+
   useEffect(() => {
     const handleFullscreenChange = () => {
         if (document.fullscreenElement === placeholderRef.current) {
             setIsPlaceholderFullscreen(true);
-        } else if (isPlaceholderFullscreen) {
+        } else {
             setIsPlaceholderFullscreen(false);
+            if (isRotated) {
+                // Check if the unlock function exists before calling
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+                setIsRotated(false);
+            }
         }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [isPlaceholderFullscreen]);
+  }, [isPlaceholderFullscreen, isRotated]);
 
   const handleUrlError = () => {
     setUrlError(true);
@@ -241,23 +272,33 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     }
 
     return (
-      <div ref={placeholderRef} className="w-full h-full bg-black/50 flex flex-col">
-        <div className="w-full flex justify-end p-2">
-            <Button
-                variant="ghost"
-                size="icon"
-                className="relative z-50 h-10 w-10 text-white hover:text-white hover:bg-white/10"
-                onClick={togglePlaceholderFullscreen}
-                aria-label={isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
-            >
-                {isPlaceholderFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-                <span className="sr-only">{isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
-            </Button>
-        </div>
+      <div ref={placeholderRef} className="w-full h-full bg-black/50 flex flex-col relative">
         <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground p-4">
             <Icon className={`h-12 w-12 md:h-16 md:w-16 mb-4 ${urlError ? 'text-destructive' : ''}`} />
             <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
             <p className="text-base md:text-lg max-w-xl">{description}</p>
+        </div>
+        <div className="absolute bottom-2 right-2 flex gap-2 md:hidden">
+             <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 text-white hover:text-white hover:bg-white/20 rounded-full"
+                onClick={handleRotate}
+                aria-label="Rotate to Landscape"
+                title="Rotate to Landscape"
+            >
+                <RefreshCw className="h-6 w-6" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 text-white hover:text-white hover:bg-white/20 rounded-full"
+                onClick={togglePlaceholderFullscreen}
+                aria-label={isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
+                title={isPlaceholderFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
+            >
+                {isPlaceholderFullscreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
+            </Button>
         </div>
       </div>
     );
