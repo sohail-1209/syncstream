@@ -29,7 +29,7 @@ export default function EmojiBar({ sessionId, user, isHost, onSync }: { sessionI
   };
 
   return (
-    <div className="absolute top-1/2 -translate-y-1/2 right-2 md:right-4 p-1 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg flex flex-col gap-1 z-50">
+    <div className="absolute bottom-4 right-4 md:top-1/2 md:bottom-auto md:right-4 md:-translate-y-1/2 p-1 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg flex flex-row md:flex-col gap-1 z-50 pointer-events-auto">
       {!isHost && (
         <Button
             variant="ghost"
