@@ -10,7 +10,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer, { type VideoPlayerRef } from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -28,6 +28,7 @@ import { DisconnectReason } from "livekit-client";
 import EmojiBar from "@/components/watch-party/emoji-bar";
 import FloatingMessages from "@/components/watch-party/floating-messages";
 import FloatingEmojis from "@/components/watch-party/floating-emojis";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
@@ -78,6 +79,7 @@ function WatchPartyContent({
 
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const pageRef = useRef<HTMLDivElement>(null);
     
     // LiveKit state
@@ -321,7 +323,7 @@ function WatchPartyContent({
 
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
-            <header className="relative flex items-center justify-between px-4 py-2 border-b z-50">
+            <header className="relative flex items-center justify-between px-2 sm:px-4 py-2 border-b z-50">
                 <Link href="/" className="flex items-center gap-2">
                     <Logo className="h-8 w-8 text-primary" />
                     <span className="font-bold text-xl font-headline hidden sm:inline">SyncStream</span>
@@ -369,7 +371,7 @@ function WatchPartyContent({
                             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                             <span className="sr-only">{isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
                         </Button>
-                         {!isHost && videoSource && (
+                         {!isHost && (videoSource || activeSharer) && (
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -384,7 +386,7 @@ function WatchPartyContent({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 md:gap-2">
                     <Button
                         variant={isHost ? 'default' : 'outline'}
                         size="icon"
@@ -398,8 +400,8 @@ function WatchPartyContent({
                     
                     <RecommendationsModal>
                         <Button variant="outline">
-                            <Wand2 className="h-4 w-4 mr-2" />
-                            Get AI Recommendations
+                            <Wand2 className="h-4 w-4 md:mr-2" />
+                            <span className="hidden md:inline">AI Recs</span>
                         </Button>
                     </RecommendationsModal>
 
@@ -453,11 +455,11 @@ function WatchPartyContent({
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button>
-                                <Users className="h-4 w-4 mr-2" />
-                                Invite
+                                <Users className="h-4 w-4 md:mr-2" />
+                                <span className="hidden md:inline">Invite</span>
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80">
+                        <PopoverContent className="w-[90vw] sm:w-80">
                             <div className="grid gap-4">
                                 <div className="space-y-2">
                                     <h4 className="font-medium leading-none">Invite friends</h4>
@@ -474,6 +476,21 @@ function WatchPartyContent({
                             </div>
                         </PopoverContent>
                     </Popover>
+                    
+                    {/* Mobile sidebar toggle */}
+                    <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="outline" size="icon" className="md:hidden">
+                                <MessageSquare className="h-4 w-4" />
+                                <span className="sr-only">Toggle Chat & Participants</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="right" className="p-0 w-full max-w-xs">
+                            <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
+                        </SheetContent>
+                    </Sheet>
+
+                    {/* Desktop sidebar toggle */}
                     <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden md:inline-flex">
                         {isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                         <span className="sr-only">Toggle Sidebar</span>
@@ -485,7 +502,7 @@ function WatchPartyContent({
                 </div>
             </header>
             <main className={cn(
-                "flex-1 flex flex-col md:grid gap-4 p-4",
+                "flex-1 flex flex-col md:grid gap-4 p-2 md:p-4",
                 isSidebarOpen
                     ? "md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px]"
                     : "md:grid-cols-1"
@@ -512,7 +529,7 @@ function WatchPartyContent({
                    )}
                 </div>
                 <div className={cn(
-                    "md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0",
+                    "hidden md:flex flex-col md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0",
                     !isSidebarOpen && "hidden"
                 )}>
                     <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
@@ -716,4 +733,3 @@ export default function WatchPartyPage() {
         </div>
     );
 }
-

@@ -28,13 +28,13 @@ export default function EmojiBar({ sessionId, user }: { sessionId: string; user:
   };
 
   return (
-    <div className="absolute top-1/2 -translate-y-1/2 right-4 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg flex flex-col gap-2 z-50">
+    <div className="absolute top-1/2 -translate-y-1/2 right-2 md:right-4 p-1 md:p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg flex flex-col gap-1 md:gap-2 z-50">
       {EMOJIS.map((emoji) => (
         <Button
           key={emoji}
           variant="ghost"
           size="icon"
-          className="text-2xl hover:bg-accent/20"
+          className="text-xl md:text-2xl hover:bg-accent/20 h-9 w-9 md:h-10 md:w-10"
           onClick={() => handleEmojiClick(emoji)}
           disabled={!user}
         >

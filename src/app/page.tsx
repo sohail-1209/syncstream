@@ -55,7 +55,7 @@ export default function Home() {
   };
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center p-8 bg-background">
+    <main className="relative flex min-h-screen flex-col items-center justify-center p-4 text-center md:p-8 bg-background">
       <div className="absolute top-4 right-4">
         <ExistingRoomsList />
       </div>
@@ -63,19 +63,19 @@ export default function Home() {
         <div className="flex justify-center items-center gap-4">
           <Logo className="h-16 w-16 text-primary" />
         </div>
-        <h1 className="text-5xl md:text-7xl font-bold text-foreground font-headline tracking-tighter">
+        <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-foreground font-headline tracking-tighter">
           SyncStream
         </h1>
-        <p className="text-lg md:text-xl text-muted-foreground">
+        <p className="text-base sm:text-lg md:text-xl text-muted-foreground">
           Your shared screen, perfectly in sync. Create private watch parties,
           chat in real-time, and get AI-powered recommendations for what to watch
           next.
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-4 sm:px-0">
            <Dialog open={isCreateRoomOpen} onOpenChange={setIsCreateRoomOpen}>
                 <DialogTrigger asChild>
-                    <Button size="lg" className="font-bold text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground">
-                        <Clapperboard className="mr-2 h-6 w-6" />
+                    <Button size="lg" className="font-bold text-base md:text-lg px-6 md:px-8 py-4 md:py-6 w-full sm:w-auto">
+                        <Clapperboard className="mr-2 h-5 w-5 md:h-6 md:w-6" />
                         Create Watch Party
                     </Button>
                 </DialogTrigger>
@@ -114,8 +114,8 @@ export default function Home() {
             </Dialog>
           <Dialog>
             <DialogTrigger asChild>
-              <Button size="lg" variant="outline" className="font-bold text-lg px-8 py-6">
-                <ArrowRight className="mr-2 h-6 w-6" />
+              <Button size="lg" variant="outline" className="font-bold text-base md:text-lg px-6 md:px-8 py-4 md:py-6 w-full sm:w-auto">
+                <ArrowRight className="mr-2 h-5 w-5 md:h-6 md:w-6" />
                 Join by Code
               </Button>
             </DialogTrigger>
