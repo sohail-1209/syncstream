@@ -1,10 +1,11 @@
+
 {
   "name": "SyncStream",
   "short_name": "SyncStream",
   "description": "Your shared screen, perfectly in sync.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1f1d21",
+  "background_color": "#0f0c12",
   "theme_color": "#4B0082",
   "icons": [
     {
