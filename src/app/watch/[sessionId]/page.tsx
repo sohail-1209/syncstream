@@ -392,6 +392,11 @@ function WatchPartyContent({
 
     const renderMobileControls = () => (
         <div className="flex items-center gap-1 md:hidden">
+            {!isHost && (videoSource || activeSharer) && (
+                <Button variant="ghost" size="icon" onClick={handleSyncToHostClick} title="Sync to Host">
+                    <RefreshCw className="h-5 w-5" />
+                </Button>
+            )}
             <Sheet>
                 <SheetTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></SheetTrigger>
                 <SheetContent side="bottom" className="p-4 pt-2 w-full h-auto rounded-t-lg">
@@ -429,7 +434,6 @@ function WatchPartyContent({
                         </Popover>
                         <RecommendationsModal><Button variant="outline" className="w-full justify-start gap-2"><Wand2 /> AI Recs</Button></RecommendationsModal>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={toggleFullscreen}>{isFullscreen ? <Minimize /> : <Maximize />} {isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</Button>
-                        {!isHost && (videoSource || activeSharer) && <Button variant="outline" className="w-full justify-start gap-2" onClick={handleSyncToHostClick}><RefreshCw /> Sync to Host</Button>}
                         
                         <div className="col-span-full pt-2">
                            <Button variant="destructive" className="w-full justify-center gap-2" onClick={handleExitRoom}>
