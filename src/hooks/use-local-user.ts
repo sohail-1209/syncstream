@@ -4,8 +4,7 @@
 import { useState, useEffect } from 'react';
 
 const ADJECTIVES = ['Swift', 'Silent', 'Clever', 'Brave', 'Wise', 'Lucky', 'Happy', 'Gentle', 'Proud', 'Funny'];
-// New list of animals based on user feedback
-const ANIMALS = ['Cat', 'Dog', 'Shark', 'Lion', 'Tiger', 'Bear', 'Fox', 'Panda']; 
+const ANIMALS = ['Cat', 'Dog', 'Shark', 'Lion', 'Tiger', 'Bear', 'Fox']; 
 
 const ANIMAL_EMOJIS: { [key: string]: string } = {
     'Cat': '🐱',
@@ -15,7 +14,16 @@ const ANIMAL_EMOJIS: { [key: string]: string } = {
     'Tiger': '🐯',
     'Bear': '🐻',
     'Fox': '🦊',
-    'Panda': '🐼',
+};
+
+const ANIMAL_COLORS: { [key: string]: string } = {
+    'Cat': 'ffbe0b',
+    'Dog': 'fb5607',
+    'Shark': '3a86ff',
+    'Lion': 'ff006e',
+    'Tiger': 'ff9f1c',
+    'Bear': '8338ec',
+    'Fox': 'e63946',
 };
 
 
@@ -30,8 +38,9 @@ export type LocalUser = {
 };
 
 function generateAvatarUrl(animal: string): string {
-    const emoji = ANIMAL_EMOJIS[animal] || '😀'; // Fallback to a smiley
-    return `https://api.dicebear.com/8.x/fun-emoji/svg?emoji=${encodeURIComponent(emoji)}`;
+    const emoji = ANIMAL_EMOJIS[animal] || '😀';
+    const color = ANIMAL_COLORS[animal] || 'cccccc';
+    return `https://api.dicebear.com/8.x/fun-emoji/svg?emoji=${encodeURIComponent(emoji)}&backgroundColor=${color}`;
 }
 
 // Function to create a brand new user
@@ -67,8 +76,9 @@ export function useLocalUser(): LocalUser | null {
     }
 
     if (localUser && localUser.id && localUser.name && localUser.avatar) {
-        // Check if the user's animal is in the new list.
-        const currentAnimal = localUser.name.split(' ')[1];
+        const nameParts = localUser.name.split(' ');
+        const currentAnimal = nameParts.length > 1 ? nameParts[1] : undefined;
+        
         if (currentAnimal && ANIMALS.includes(currentAnimal)) {
             // User is valid and has an approved animal, just make sure avatar is latest style
             const expectedAvatar = generateAvatarUrl(currentAnimal);
