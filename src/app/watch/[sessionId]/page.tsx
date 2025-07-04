@@ -494,8 +494,8 @@ function WatchPartyContent({
 
             {/* Mobile Sidebar - triggered from the mobile menu */}
             <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-                <SheetContent side="right" className="p-0 w-full max-w-xs">
-                    <SheetHeaderComponent className="p-4 border-b">
+                <SheetContent side="right" className="p-0 w-full max-w-xs flex flex-col">
+                    <SheetHeaderComponent className="p-4 border-b flex-shrink-0">
                       <SheetTitleComponent>Chat and Participants</SheetTitleComponent>
                     </SheetHeaderComponent>
                     <Sidebar sessionId={sessionId} user={user} hostId={hostId} />

@@ -7,18 +7,18 @@ import { type LocalUser } from "@/hooks/use-local-user";
 
 export default function Sidebar({ sessionId, user, hostId }: { sessionId: string; user: LocalUser | null, hostId: string | null }) {
   return (
-    <Card className="w-full h-full flex flex-col">
-      <Tabs defaultValue="chat" className="w-full flex-1 flex flex-col">
-        <div className="p-2 border-b">
+    <Card className="w-full flex-1 flex flex-col min-h-0">
+      <Tabs defaultValue="chat" className="w-full flex-1 flex flex-col min-h-0">
+        <div className="p-2 border-b flex-shrink-0">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="participants">Participants</TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="chat" className="flex-1 overflow-auto mt-0">
+        <TabsContent value="chat" className="flex-1 overflow-y-auto mt-0">
           <ChatPanel sessionId={sessionId} user={user} />
         </TabsContent>
-        <TabsContent value="participants" className="flex-1 overflow-auto mt-0">
+        <TabsContent value="participants" className="flex-1 overflow-y-auto mt-0">
           <ParticipantsPanel sessionId={sessionId} hostId={hostId} />
         </TabsContent>
       </Tabs>
