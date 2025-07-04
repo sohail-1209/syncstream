@@ -208,6 +208,15 @@ export default function Home() {
                           </div>
                           <div className="flex items-start gap-4">
                               <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <Users className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Invite Friends</p>
+                                  <p className="text-muted-foreground">Get a shareable link to invite others to join your watch party.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
                                   <Wand2 className="h-5 w-5 text-primary" />
                               </div>
                               <div>
