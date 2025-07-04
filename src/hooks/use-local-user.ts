@@ -5,6 +5,18 @@ import { useState, useEffect } from 'react';
 
 const ADJECTIVES = ['Swift', 'Silent', 'Clever', 'Brave', 'Wise', 'Lucky', 'Happy', 'Gentle', 'Proud', 'Funny'];
 const ANIMALS = ['Fox', 'Wolf', 'Bear', 'Lion', 'Tiger', 'Eagle', 'Shark', 'Panther', 'Falcon', 'Hawk'];
+const ANIMAL_EMOJIS: { [key: string]: string } = {
+    'Fox': '🦊',
+    'Wolf': '🐺',
+    'Bear': '🐻',
+    'Lion': '🦁',
+    'Tiger': '🐅',
+    'Eagle': '🦅',
+    'Shark': '🦈',
+    'Panther': '🐆', // Using Leopard emoji for Panther
+    'Falcon': '🦅',
+    'Hawk': '🦅'
+};
 
 
 function getRandomItem<T>(arr: T[]): T {
@@ -16,6 +28,11 @@ export type LocalUser = {
   avatar: string;
   id: string;
 };
+
+function generateAvatarUrl(animal: string): string {
+    const emoji = ANIMAL_EMOJIS[animal] || '😀'; // Fallback to a smiley
+    return `https://api.dicebear.com/8.x/fun-emoji/svg?emoji=${encodeURIComponent(emoji)}`;
+}
 
 export function useLocalUser(): LocalUser | null {
   const [user, setUser] = useState<LocalUser | null>(null);
@@ -36,9 +53,12 @@ export function useLocalUser(): LocalUser | null {
     }
 
     // If user exists, check if we need to update their avatar to the new style.
-    if (localUser && (!localUser.avatar || !localUser.avatar.includes('/adventurer/'))) {
-        localUser.avatar = `https://api.dicebear.com/8.x/adventurer/svg?seed=${encodeURIComponent(localUser.name)}`;
-        userWasModified = true;
+    if (localUser && (!localUser.avatar || !localUser.avatar.includes('/fun-emoji/'))) {
+        const animal = localUser.name.split(' ')[1];
+        if (animal && ANIMALS.includes(animal)) {
+             localUser.avatar = generateAvatarUrl(animal);
+             userWasModified = true;
+        }
     }
 
 
@@ -57,7 +77,7 @@ export function useLocalUser(): LocalUser | null {
 
       const newUser: LocalUser = {
         name: name,
-        avatar: `https://api.dicebear.com/8.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
+        avatar: generateAvatarUrl(animal),
         id: newId,
       };
       localStorage.setItem('syncstream_user', JSON.stringify(newUser));
