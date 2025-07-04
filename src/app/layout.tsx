@@ -29,7 +29,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
-        <meta name="theme-color" content="#8B5CF6" />
+        <meta name="theme-color" content="#4B0082" />
         <link rel="apple-touch-icon" href="/icons/icon-512x512.svg" />
         <link rel="manifest" href="/manifest.json" />
       </head>
