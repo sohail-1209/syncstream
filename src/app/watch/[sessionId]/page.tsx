@@ -30,6 +30,7 @@ import FloatingMessages from "@/components/watch-party/floating-messages";
 import FloatingEmojis from "@/components/watch-party/floating-emojis";
 import { Sheet, SheetContent, SheetHeader as SheetHeaderComponent, SheetTitle as SheetTitleComponent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import MobileSidebar from "@/components/watch-party/mobile-sidebar";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
@@ -498,9 +499,7 @@ function WatchPartyContent({
                     <SheetHeaderComponent className="p-4 border-b flex-shrink-0">
                       <SheetTitleComponent>Chat and Participants</SheetTitleComponent>
                     </SheetHeaderComponent>
-                    <div className="flex-1 min-h-0">
-                        <Sidebar sessionId={sessionId} user={user} hostId={hostId} />
-                    </div>
+                    <MobileSidebar sessionId={sessionId} user={user} hostId={hostId} />
                 </SheetContent>
             </Sheet>
 
