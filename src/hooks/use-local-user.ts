@@ -47,12 +47,12 @@ export function useLocalUser(): LocalUser | null {
       }
     }
 
-    // If user exists, check if we need to update their avatar to an animal emoji
-    if (localUser && localUser.avatar && !localUser.avatar.includes('/fun-emoji/')) {
+    // If user exists, check if we need to update their avatar to the new style.
+    if (localUser && localUser.avatar && !localUser.avatar.includes('/initials/')) {
         const nameParts = localUser.name.split(' ');
         const animal = nameParts.length > 1 ? nameParts[nameParts.length - 1] : getRandomItem(ANIMALS);
         const emoji = ANIMAL_EMOJIS[animal] || '🐾';
-        localUser.avatar = `https://api.dicebear.com/8.x/fun-emoji/svg?seed=${encodeURIComponent(emoji)}`;
+        localUser.avatar = `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(emoji)}`;
         userWasModified = true;
     }
 
@@ -72,7 +72,7 @@ export function useLocalUser(): LocalUser | null {
 
       const newUser: LocalUser = {
         name: `${adjective} ${animal}`,
-        avatar: `https://api.dicebear.com/8.x/fun-emoji/svg?seed=${encodeURIComponent(emoji)}`,
+        avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(emoji)}`,
         id: newId,
       };
       localStorage.setItem('syncstream_user', JSON.stringify(newUser));
