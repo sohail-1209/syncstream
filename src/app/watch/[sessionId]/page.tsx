@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/icons";
-import VideoPlayer from "@/components/watch-party/video-player";
+import VideoPlayer, { type VideoPlayerRef } from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -25,6 +25,7 @@ import LiveKitStage from "@/components/watch-party/livekit-stage";
 import { cn } from "@/lib/utils";
 import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react";
 import { DisconnectReason } from "livekit-client";
+import EmojiBar from "@/components/watch-party/emoji-bar";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
@@ -87,6 +88,11 @@ function WatchPartyContent({
     const [isHostPromptOpen, setIsHostPromptOpen] = useState(false);
     const [hostPassword, setHostPassword] = useState('');
     const [isClaimingHost, startClaimHostTransition] = useTransition();
+    const videoPlayerRef = useRef<VideoPlayerRef>(null);
+
+    const handleSyncToHostClick = () => {
+        videoPlayerRef.current?.syncToHost();
+    };
 
 
     useEffect(() => {
@@ -361,6 +367,18 @@ function WatchPartyContent({
                             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                             <span className="sr-only">{isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
                         </Button>
+                         {!isHost && videoSource && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full"
+                                onClick={handleSyncToHostClick}
+                                title="Sync to Host"
+                            >
+                                <RefreshCw className="h-4 w-4" />
+                                <span className="sr-only">Sync to Host</span>
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -470,17 +488,21 @@ function WatchPartyContent({
                     ? "md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px]"
                     : "md:grid-cols-1"
             )}>
-                <div className="md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
+                <div className="relative md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
                    {activeSharer ? (
                         <LiveKitStage sharerId={activeSharer}/>
                    ) : (
-                        <VideoPlayer 
-                            videoSource={videoSource}
-                            playbackState={playbackState}
-                            onPlaybackChange={handlePlaybackChange}
-                            user={user}
-                            isHost={isHost}
-                        />
+                        <div className="relative w-full h-full">
+                            <VideoPlayer 
+                                ref={videoPlayerRef}
+                                videoSource={videoSource}
+                                playbackState={playbackState}
+                                onPlaybackChange={handlePlaybackChange}
+                                user={user}
+                                isHost={isHost}
+                            />
+                            {videoSource && <EmojiBar />}
+                        </div>
                    )}
                 </div>
                 <div className={cn(
@@ -688,8 +710,3 @@ export default function WatchPartyPage() {
         </div>
     );
 }
-
-    
-
-    
-

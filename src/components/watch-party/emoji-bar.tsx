@@ -1,8 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
 
 const EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🔥'];
 
@@ -12,7 +12,7 @@ type FlyingEmoji = {
   x: number;
 };
 
-export default function EmojiBar({ onSyncToHost, isHost, isReady }: { onSyncToHost: () => void; isHost: boolean; isReady: boolean; }) {
+export default function EmojiBar() {
   const [flyingEmojis, setFlyingEmojis] = useState<FlyingEmoji[]>([]);
 
   const handleEmojiClick = (emoji: string) => {
@@ -31,21 +31,7 @@ export default function EmojiBar({ onSyncToHost, isHost, isReady }: { onSyncToHo
 
   return (
     <>
-      <div className="absolute bottom-20 right-4 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg flex gap-1 z-20 items-center">
-        {!isHost && isReady && (
-            <>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="hover:bg-accent/20"
-                    onClick={onSyncToHost}
-                    title="Sync to Host"
-                >
-                    <RefreshCw className="h-5 w-5" />
-                </Button>
-                <div className="w-[1px] h-6 bg-border/50 mx-1"></div>
-            </>
-        )}
+      <div className="absolute bottom-20 right-4 p-2 bg-card/50 backdrop-blur-sm rounded-lg border border-border shadow-lg flex gap-1 z-50 items-center">
         {EMOJIS.map((emoji) => (
           <Button
             key={emoji}

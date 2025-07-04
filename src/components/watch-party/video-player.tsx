@@ -1,11 +1,11 @@
+
 'use client';
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import EmojiBar from "./emoji-bar";
 import { Film, AlertTriangle, Maximize, Minimize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
 import ReactPlayer from 'react-player';
 import type { LocalUser } from "@/hooks/use-local-user";
@@ -18,19 +18,25 @@ type PlaybackState = {
   updatedAt: number;
 } | null;
 
-export default function VideoPlayer({ 
-  videoSource,
-  playbackState,
-  onPlaybackChange,
-  user,
-  isHost
-}: { 
+type VideoPlayerProps = { 
   videoSource: ProcessVideoUrlOutput | null;
   playbackState: PlaybackState;
   onPlaybackChange: (newState: { isPlaying: boolean, seekTime: number }) => void;
   user: LocalUser | null;
   isHost: boolean;
-}) {
+};
+
+export interface VideoPlayerRef {
+  syncToHost: () => void;
+}
+
+const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer({ 
+  videoSource,
+  playbackState,
+  onPlaybackChange,
+  user,
+  isHost
+}, ref) {
   const { toast } = useToast();
   const playerRef = useRef<ReactPlayer>(null);
   const isSyncing = useRef(false);
@@ -112,7 +118,6 @@ export default function VideoPlayer({
   const handlePlay = useCallback(() => {
     if (isSyncing.current) return;
     
-    // Allow the initial click for non-hosts to satisfy browser autoplay policies
     if (!localIsPlaying) {
         setLocalIsPlaying(true);
     }
@@ -135,12 +140,12 @@ export default function VideoPlayer({
   }, [isHost, localIsPlaying, onPlaybackChange, user?.id]);
 
   const handleSeek = useCallback((seconds: number) => {
-    if (isSyncing.current || !isHost) return;
+    if (isSyncing.current) return;
     
-    if (user?.id) {
+    if (isHost && user?.id) {
         onPlaybackChange({ isPlaying: localIsPlaying, seekTime: seconds });
     }
-  }, [isHost, localIsPlaying, onPlaybackChange, user?.id]);
+  }, [isHost, isSyncing, localIsPlaying, onPlaybackChange, user?.id]);
   
   const handleProgress = useCallback((progress: OnProgressProps) => {
     if (isSyncing.current || !isHost || !localIsPlaying) {
@@ -218,6 +223,10 @@ export default function VideoPlayer({
     }, 1000);
   };
 
+  useImperativeHandle(ref, () => ({
+    syncToHost: handleSyncToHost
+  }));
+
   const renderPlaceholder = () => {
     let Icon = Film;
     let title = "No Video Loaded";
@@ -284,9 +293,8 @@ export default function VideoPlayer({
            renderPlaceholder()
         )}
       </div>
-      {isMounted && videoSource && !urlError && (
-        <EmojiBar onSyncToHost={handleSyncToHost} isHost={isHost} isReady={isReady} />
-      )}
     </Card>
   );
-}
+});
+
+export default VideoPlayer;
