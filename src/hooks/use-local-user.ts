@@ -5,6 +5,19 @@ import { useState, useEffect } from 'react';
 
 const ADJECTIVES = ['Swift', 'Silent', 'Clever', 'Brave', 'Wise', 'Lucky', 'Happy', 'Gentle', 'Proud', 'Funny'];
 const ANIMALS = ['Fox', 'Wolf', 'Bear', 'Lion', 'Tiger', 'Eagle', 'Shark', 'Panther', 'Falcon', 'Hawk'];
+const ANIMAL_EMOJIS: { [key: string]: string } = {
+    'Fox': '🦊',
+    'Wolf': '🐺',
+    'Bear': '🐻',
+    'Lion': '🦁',
+    'Tiger': '🐯',
+    'Eagle': '🦅',
+    'Shark': '🦈',
+    'Panther': '🐆',
+    'Falcon': '🦅',
+    'Hawk': '🦅',
+};
+
 
 function getRandomItem<T>(arr: T[]): T {
     return arr[Math.floor(Math.random() * arr.length)];
@@ -34,11 +47,15 @@ export function useLocalUser(): LocalUser | null {
       }
     }
 
-    // If user exists but has an old avatar (not from DiceBear), update it.
-    if (localUser && localUser.avatar && !localUser.avatar.startsWith('https://api.dicebear.com')) {
-        localUser.avatar = `https://api.dicebear.com/8.x/adventurer/svg?seed=${localUser.id}`;
+    // If user exists, check if we need to update their avatar to an animal emoji
+    if (localUser && localUser.avatar && !localUser.avatar.includes('/fun-emoji/')) {
+        const nameParts = localUser.name.split(' ');
+        const animal = nameParts.length > 1 ? nameParts[nameParts.length - 1] : getRandomItem(ANIMALS);
+        const emoji = ANIMAL_EMOJIS[animal] || '🐾';
+        localUser.avatar = `https://api.dicebear.com/8.x/fun-emoji/svg?seed=${encodeURIComponent(emoji)}`;
         userWasModified = true;
     }
+
 
     if (localUser && localUser.id && localUser.name && localUser.avatar) {
       // If we updated the avatar, save the changes back to localStorage.
@@ -51,10 +68,11 @@ export function useLocalUser(): LocalUser | null {
       const adjective = getRandomItem(ADJECTIVES);
       const animal = getRandomItem(ANIMALS);
       const newId = crypto.randomUUID();
+      const emoji = ANIMAL_EMOJIS[animal] || '🐾';
 
       const newUser: LocalUser = {
         name: `${adjective} ${animal}`,
-        avatar: `https://api.dicebear.com/8.x/adventurer/svg?seed=${newId}`,
+        avatar: `https://api.dicebear.com/8.x/fun-emoji/svg?seed=${encodeURIComponent(emoji)}`,
         id: newId,
       };
       localStorage.setItem('syncstream_user', JSON.stringify(newUser));
