@@ -79,6 +79,11 @@ export default function MobileChatPanel({ sessionId, user, participants, partici
       await addDoc(collection(db, "sessions", sessionId, "messages"), {
         text: text,
         userId: user.id,
+        user: {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar
+        },
         timestamp: serverTimestamp()
       });
     }
@@ -100,7 +105,7 @@ export default function MobileChatPanel({ sessionId, user, participants, partici
             <div
               key={msg.id}
               className={cn(
-                'flex items-center gap-2',
+                'flex items-start gap-2',
                 msg.isMe ? 'justify-end' : 'justify-start'
               )}
             >
@@ -118,7 +123,7 @@ export default function MobileChatPanel({ sessionId, user, participants, partici
                     : 'bg-muted'
                 )}
               >
-                {!msg.isMe && <p className="font-semibold text-xs mb-1 text-accent">{msg.user.name}</p>}
+                {!msg.isMe && <p className="font-semibold text-xs mb-1 text-primary">{msg.user.name}</p>}
                 <p>{msg.text}</p>
               </div>
                {msg.isMe && (

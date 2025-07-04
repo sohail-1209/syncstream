@@ -36,7 +36,13 @@ export default function FloatingMessages({ sessionId, user }: { sessionId: strin
 
                 if (change.type === "added" && messageTimestamp && messageTimestamp.toMillis() > mountTime.current.toMillis()) {
                     // Don't show your own messages floating
-                    if (docData.user.id === user?.id) {
+                    const messageSenderId = docData.userId || docData.user?.id;
+                    if (messageSenderId === user?.id) {
+                        return;
+                    }
+
+                    // Gracefully handle messages that might not have the user object
+                    if (!docData.user) {
                         return;
                     }
 
