@@ -45,7 +45,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const playerRef = useRef<ReactPlayer>(null);
   const isSyncing = useRef(false);
   const lastProgressUpdate = useRef(0);
-  const lastHostUpdate = useRef(0);
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -53,6 +52,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const placeholderRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<VideoPlayerStatus>('idle');
   const [playerConfig, setPlayerConfig] = useState({});
+  const shownToastForUrl = useRef<string | null>(null);
 
   const handleStatusChange = useCallback((newStatus: VideoPlayerStatus) => {
     setStatus(newStatus);
@@ -79,6 +79,10 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
 
   useEffect(() => {
     if (videoSource?.correctedUrl) {
+      // Reset toast memory when a new video is set
+      if (shownToastForUrl.current !== videoSource.correctedUrl) {
+        shownToastForUrl.current = null;
+      }
       handleStatusChange('loading');
     } else {
       handleStatusChange('idle');
@@ -104,50 +108,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     return () => clearTimeout(timer);
   }, [status, toast, handleStatusChange]);
 
-
-  // Sync remote state to local player
-  useEffect(() => {
-    if (!playbackState || status !== 'ready' || !playerRef.current || !user || !isMounted) {
-      return;
-    }
-    
-    if (playbackState.updatedAt <= lastHostUpdate.current) {
-        return;
-    }
-
-    if (playbackState.updatedBy === user.id) {
-      return;
-    }
-
-    lastHostUpdate.current = playbackState.updatedAt;
-    isSyncing.current = true;
-
-    if (localIsPlaying !== playbackState.isPlaying) {
-      setLocalIsPlaying(playbackState.isPlaying);
-    }
-
-    const localTime = playerRef.current.getCurrentTime() || 0;
-    const remoteTime = playbackState.seekTime || 0;
-
-    if (Math.abs(localTime - remoteTime) > 1.5) {
-      playerRef.current.seekTo(remoteTime, 'seconds');
-    }
-    
-    const syncTimeout = setTimeout(() => {
-      isSyncing.current = false;
-    }, 1000);
-
-    return () => clearTimeout(syncTimeout);
-  }, [playbackState, status, isMounted, user, localIsPlaying]);
-
-  useEffect(() => {
-      if (status === 'ready' && playbackState && playerRef.current) {
-          isSyncing.current = true;
-          setLocalIsPlaying(playbackState.isPlaying);
-          playerRef.current.seekTo(playbackState.seekTime, 'seconds');
-          setTimeout(() => { isSyncing.current = false; }, 500);
-      }
-  }, [status, playbackState]);
 
   const handleReady = useCallback(() => {
     handleStatusChange('ready');
