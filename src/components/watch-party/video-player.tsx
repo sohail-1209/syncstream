@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card } from "@/components/ui/card";
@@ -36,6 +35,7 @@ export default function VideoPlayer({
   const playerRef = useRef<ReactPlayer>(null);
   const isSyncing = useRef(false);
   const lastProgressUpdate = useRef(0);
+  const lastHostUpdate = useRef(0);
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -59,11 +59,18 @@ export default function VideoPlayer({
     if (!playbackState || !isReady || !playerRef.current || !user || !isMounted) {
       return;
     }
+    
+    // Ignore stale updates
+    if (playbackState.updatedAt < lastHostUpdate.current) {
+        return;
+    }
 
     // Ignore updates that we triggered ourselves
     if (playbackState.updatedBy === user.id) {
       return;
     }
+
+    lastHostUpdate.current = playbackState.updatedAt;
     
     // Set a flag to prevent our own event handlers from firing while we sync.
     isSyncing.current = true;
@@ -83,7 +90,7 @@ export default function VideoPlayer({
     
     const syncTimeout = setTimeout(() => {
       isSyncing.current = false;
-    }, 500);
+    }, 1000); // Give it a bit more time to settle
 
     return () => clearTimeout(syncTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,7 +103,7 @@ export default function VideoPlayer({
         isSyncing.current = true;
         setLocalIsPlaying(playbackState.isPlaying);
         playerRef.current.seekTo(playbackState.seekTime, 'seconds');
-        setTimeout(() => { isSyncing.current = false; }, 500); // Release lock after sync
+        setTimeout(() => { isSyncing.current = false; }, 1000); // Release lock after sync
     }
   }, [playbackState]);
 
@@ -134,14 +141,10 @@ export default function VideoPlayer({
   }, [localIsPlaying, onPlaybackChange, user?.id, isHost]);
   
   const handleProgress = useCallback((progress: OnProgressProps) => {
-    if (isSyncing.current) {
+    if (isSyncing.current || !isHost || !localIsPlaying) {
       return;
     }
     
-    if (!isHost || !localIsPlaying) {
-      return;
-    }
-
     const now = Date.now();
     if (now - lastProgressUpdate.current > 5000) {
       lastProgressUpdate.current = now;
@@ -192,7 +195,7 @@ export default function VideoPlayer({
   const renderPlaceholder = () => {
     let Icon = Film;
     let title = "No Video Loaded";
-    let description = 'The host can use the "Set Video" or "Share Screen" buttons to start.';
+    let description = isHost ? 'The host can use the "Set Video" or "Share Screen" buttons to start.' : "Waiting for the host to start a video...";
 
     if (urlError) {
       Icon = AlertTriangle;
@@ -219,7 +222,6 @@ export default function VideoPlayer({
             <h2 className="text-2xl font-bold">{title}</h2>
             <p className="text-lg max-w-xl">{description}</p>
         </div>
-        {!isHost && <div className="absolute inset-0 z-10" />}
       </div>
     );
   }
@@ -251,7 +253,6 @@ export default function VideoPlayer({
                 }
               }}
             />
-            {!isHost && <div className="absolute inset-0 z-10" />}
             <EmojiBar />
           </>
         ) : (
