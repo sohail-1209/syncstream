@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,6 +23,7 @@ export function useLocalUser(): LocalUser | null {
     // This code only runs on the client
     let localUserJson = localStorage.getItem('syncstream_user');
     let localUser: LocalUser | null = null;
+    let userWasModified = false;
 
     if (localUserJson) {
       try {
@@ -32,9 +34,20 @@ export function useLocalUser(): LocalUser | null {
       }
     }
 
+    // If user exists but has an old avatar (not from DiceBear), update it.
+    if (localUser && localUser.avatar && !localUser.avatar.startsWith('https://api.dicebear.com')) {
+        localUser.avatar = `https://api.dicebear.com/8.x/adventurer/svg?seed=${localUser.id}`;
+        userWasModified = true;
+    }
+
     if (localUser && localUser.id && localUser.name && localUser.avatar) {
+      // If we updated the avatar, save the changes back to localStorage.
+      if (userWasModified) {
+          localStorage.setItem('syncstream_user', JSON.stringify(localUser));
+      }
       setUser(localUser);
     } else {
+      // Create a new user if one doesn't exist.
       const adjective = getRandomItem(ADJECTIVES);
       const animal = getRandomItem(ANIMALS);
       const newId = crypto.randomUUID();
