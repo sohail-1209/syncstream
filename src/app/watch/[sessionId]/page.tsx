@@ -10,7 +10,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer, { type VideoPlayerRef, type VideoPlayerStatus } from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare, MoreVertical, RotateCw, Download } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare, MoreVertical, RotateCw } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -31,7 +31,6 @@ import FloatingEmojis from "@/components/watch-party/floating-emojis";
 import { Sheet, SheetContent, SheetHeader as SheetHeaderComponent, SheetTitle as SheetTitleComponent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileSidebar from "@/components/watch-party/mobile-sidebar";
-import { usePwaInstall } from "@/hooks/use-pwa-install";
 
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
@@ -101,9 +100,6 @@ function WatchPartyContent({
     const shownToastForUrl = useRef<string | null>(null);
 
     const [playerStatus, setPlayerStatus] = useState<VideoPlayerStatus>('idle');
-
-    // PWA Install
-    const { canInstall, handleInstall } = usePwaInstall();
 
     useEffect(() => {
         // Only show toast if status is ready, there's a video, and we haven't shown a toast for this specific URL yet.
@@ -494,11 +490,7 @@ function WatchPartyContent({
                                 <div className="flex items-center gap-2 mt-2"><Input value={inviteLink} readOnly /><Button variant="outline" size="icon" onClick={handleCopyInvite}><Copy className="h-4 w-4" /></Button></div>
                             </PopoverContent>
                         </Popover>
-                        {canInstall && (
-                            <Button variant="outline" className="w-full justify-start gap-2" onClick={handleInstall}>
-                                <Download /> Install App
-                            </Button>
-                        )}
+                        
                         <RecommendationsModal><Button variant="outline" className="w-full justify-start gap-2"><Wand2 /> AI Recs</Button></RecommendationsModal>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={toggleFullscreen}>{isFullscreen ? <Minimize /> : <Maximize />} {isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</Button>
                         

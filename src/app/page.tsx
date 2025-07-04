@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Clapperboard, Users, ArrowRight, Loader2 } from 'lucide-react';
+import { Clapperboard, Users, ArrowRight, Loader2, Download } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import {
   Dialog,
@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { ExistingRoomsList } from '@/components/home/existing-rooms-list';
 import { createRoomWithPassword } from './actions';
 import { useToast } from '@/hooks/use-toast';
+import { usePwaInstall } from '@/hooks/use-pwa-install';
 
 
 export default function Home() {
@@ -30,6 +31,7 @@ export default function Home() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
+  const { canInstall, handleInstall } = usePwaInstall();
 
   const handleJoinRoom = () => {
     if (roomCode.trim()) {
@@ -56,7 +58,13 @@ export default function Home() {
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 text-center md:p-8 bg-background">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        {canInstall && (
+            <Button variant="outline" onClick={handleInstall}>
+                <Download className="mr-2 h-4 w-4" />
+                Install App
+            </Button>
+        )}
         <ExistingRoomsList />
       </div>
       <div className="text-center space-y-6 max-w-2xl mx-auto">
