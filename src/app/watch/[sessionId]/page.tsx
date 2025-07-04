@@ -65,7 +65,7 @@ function WatchPartyContent({
     const [videoSource, setVideoSource] = useState<ProcessVideoUrlOutput | null>(initialVideoSource);
     const [playbackState, setPlaybackState] = useState<PlaybackState>(initialPlaybackState);
     const [tempUrl, setTempUrl] = useState('');
-    const [isVideoPopoverOpen, setIsVideoPopoverOpen] = useState(false);
+    const [isSetVideoDialogOpen, setIsSetVideoDialogOpen] = useState(false);
     const [urlError, setUrlError] = useState<string | null>(null);
 
     const [hasPassword, setHasPassword] = useState(initialHasPassword);
@@ -97,6 +97,12 @@ function WatchPartyContent({
     const handleSyncToHostClick = () => {
         videoPlayerRef.current?.syncToHost();
     };
+
+    useEffect(() => {
+        if (!isSetVideoDialogOpen) {
+            setUrlError(null);
+        }
+    }, [isSetVideoDialogOpen]);
 
 
     useEffect(() => {
@@ -188,7 +194,7 @@ function WatchPartyContent({
                 setUrlError(result.error);
             } else if (result.data) {
                 await setVideoSourceForSession(sessionId, result.data);
-                setIsVideoPopoverOpen(false);
+                setIsSetVideoDialogOpen(false);
                 setTempUrl('');
                 toast({
                   title: "Video Loaded!",
@@ -358,14 +364,7 @@ function WatchPartyContent({
                     <span className="hidden lg:inline">{amSharing ? 'Stop Sharing' : 'Share Screen'}</span>
                 </Button>
                 {localParticipant && <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleToggleMic}>{isMicMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button>}
-                <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
-                    <PopoverTrigger asChild><Button variant="outline" size="icon" className="h-8 w-8" disabled={!isHost}><LinkIcon className="h-4 w-4" /></Button></PopoverTrigger>
-                    <PopoverContent className="w-80">
-                        <div className="space-y-2"><h4 className="font-medium">Set Video</h4><p className="text-sm text-muted-foreground">Paste a video link. Direct links work best.</p></div>
-                        <div className="flex items-center gap-2 mt-2"><Input value={tempUrl} onChange={(e) => setTempUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()} disabled={isPending} /><Button onClick={handleSetVideo} size="sm" disabled={isPending}>{isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load"}</Button></div>
-                        {urlError && <p className="text-xs text-destructive mt-1">{urlError}</p>}
-                    </PopoverContent>
-                </Popover>
+                <Button variant="outline" size="icon" className="h-8 w-8" disabled={!isHost} onClick={() => setIsSetVideoDialogOpen(true)}><LinkIcon className="h-4 w-4" /></Button>
                 <Popover>
                     <PopoverTrigger asChild><Button size="sm" className="h-8"><Users className="h-4 w-4" /><span className="hidden lg:inline">Invite</span></Button></PopoverTrigger>
                     <PopoverContent className="w-[90vw] sm:w-80">
@@ -405,14 +404,9 @@ function WatchPartyContent({
                         </Button>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={onHostButtonClick} disabled={isClaimingHost}>{isClaimingHost ? <Loader2 className="animate-spin" /> : <Crown />} {isHost ? 'Abdicate Host' : 'Become Host'}</Button>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={handleShareScreen} disabled={isTogglingShare}>{isTogglingShare ? <Loader2 className="animate-spin" /> : (amSharing ? <VideoOff /> : <ScreenShare />)} {amSharing ? 'Stop Sharing' : 'Share Screen'}</Button>
-                        <Popover open={isVideoPopoverOpen} onOpenChange={setIsVideoPopoverOpen}>
-                             <PopoverTrigger asChild><Button variant="outline" className="w-full justify-start gap-2" disabled={!isHost}><LinkIcon /> Set Video</Button></PopoverTrigger>
-                             <PopoverContent className="w-80">
-                                <div className="space-y-2"><h4 className="font-medium">Set Video</h4><p className="text-sm text-muted-foreground">Paste a video link. Direct links work best.</p></div>
-                                <div className="flex items-center gap-2 mt-2"><Input value={tempUrl} onChange={(e) => setTempUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()} disabled={isPending} /><Button onClick={handleSetVideo} size="sm" disabled={isPending}>{isPending ? <Loader2 className="animate-spin" /> : "Load"}</Button></div>
-                                {urlError && <p className="text-xs text-destructive mt-1">{urlError}</p>}
-                            </PopoverContent>
-                        </Popover>
+                        <Button variant="outline" className="w-full justify-start gap-2" disabled={!isHost} onClick={() => setIsSetVideoDialogOpen(true)}>
+                            <LinkIcon /> Set Video
+                        </Button>
                         {localParticipant && <Button variant="outline" className="w-full justify-start gap-2" onClick={handleToggleMic}>{isMicMuted ? <MicOff /> : <Mic />} {isMicMuted ? "Unmute" : "Mute"}</Button>}
                         <Popover>
                             <PopoverTrigger asChild><Button variant="outline" className="w-full justify-start gap-2"><Users /> Invite</Button></PopoverTrigger>
@@ -515,6 +509,35 @@ function WatchPartyContent({
                         <Button variant="outline" onClick={() => setIsHostPromptOpen(false)}>Cancel</Button>
                         <Button onClick={handleClaimHost} disabled={isClaimingHost}>
                             {isClaimingHost ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Crown className="mr-2 h-4 w-4" />} Confirm
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isSetVideoDialogOpen} onOpenChange={setIsSetVideoDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Set Video</DialogTitle>
+                        <DialogDescription>
+                           Paste a video link. Direct links and URLs from services like YouTube or Vimeo work best.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-4">
+                        <Label htmlFor="video-url-input" className="sr-only">Video URL</Label>
+                        <Input
+                            id="video-url-input"
+                            value={tempUrl}
+                            onChange={(e) => setTempUrl(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSetVideo()}
+                            disabled={isPending}
+                            placeholder="https://..."
+                        />
+                        {urlError && <p className="text-xs text-destructive pt-1">{urlError}</p>}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsSetVideoDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSetVideo} disabled={isPending || !tempUrl.trim()}>
+                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Load"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -690,4 +713,3 @@ export default function WatchPartyPage() {
         </div>
     );
 }
-
