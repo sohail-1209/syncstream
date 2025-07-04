@@ -1,16 +1,17 @@
+
 {
   "name": "SyncStream",
   "short_name": "SyncStream",
-  "description": "Your shared screen, perfectly in sync. Watch together, anywhere.",
+  "description": "Your shared screen, perfectly in sync. Create private watch parties, chat in real-time, and get AI-powered recommendations.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#110e13",
+  "theme_color": "#a855f7",
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }
-  ],
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#111012",
-  "theme_color": "#a855f7"
+  ]
 }
