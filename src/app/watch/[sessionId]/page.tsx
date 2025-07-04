@@ -10,7 +10,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer, { type VideoPlayerRef } from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare, MoreVertical } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare, MoreVertical, RotateCw } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -80,6 +80,7 @@ function WatchPartyContent({
     const [hostId, setHostId] = useState<string | null>(initialHostId);
 
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isRotated, setIsRotated] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const pageRef = useRef<HTMLDivElement>(null);
@@ -168,12 +169,40 @@ function WatchPartyContent({
 
     useEffect(() => {
         const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
+            const isCurrentlyFullscreen = !!document.fullscreenElement;
+            setIsFullscreen(isCurrentlyFullscreen);
+            if (!isCurrentlyFullscreen && isRotated) {
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+                setIsRotated(false);
+            }
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
+    }, [isRotated]);
 
+    const handleRotate = async () => {
+        if (!pageRef.current) return;
+        try {
+            if (!document.fullscreenElement) {
+                await pageRef.current.requestFullscreen();
+            }
+            if (screen.orientation && screen.orientation.lock) {
+                await screen.orientation.lock('landscape');
+                setIsRotated(true);
+            } else {
+                throw new Error("Screen Orientation API not supported.");
+            }
+        } catch (err) {
+            console.error("Could not lock orientation:", err);
+            toast({
+                variant: 'destructive',
+                title: 'Rotation Failed',
+                description: 'Your browser may not support screen rotation or requires being in fullscreen mode.'
+            });
+        }
+    };
 
     const handleSetVideo = () => {
         if (!isHost) {
@@ -398,6 +427,9 @@ function WatchPartyContent({
                     <RefreshCw className="h-5 w-5" />
                 </Button>
             )}
+             <Button variant="ghost" size="icon" onClick={handleRotate} title="Rotate Screen">
+                <RotateCw className="h-5 w-5" />
+            </Button>
             <Sheet>
                 <SheetTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></SheetTrigger>
                 <SheetContent side="bottom" className="p-4 pt-2 w-full h-auto rounded-t-lg" container={pageRef.current}>
