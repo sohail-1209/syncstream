@@ -114,6 +114,14 @@ function WatchPartyContent({
     }, [playerStatus, videoSource, toast]);
 
     const handleSyncToHostClick = () => {
+        if (!playbackState) {
+            toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: 'No host playback data available to sync to.',
+            });
+            return;
+        }
         videoPlayerRef.current?.syncToHost();
     };
 
@@ -158,8 +166,6 @@ function WatchPartyContent({
             setHostId(data?.hostId ?? null);
             setActiveSharer(data?.activeSharer ?? null);
             const newVideoSource = data?.videoSource ?? null;
-
-            // Only update video source if it has actually changed
             if (JSON.stringify(newVideoSource) !== JSON.stringify(videoSource)) {
                 setVideoSource(newVideoSource);
             }
@@ -172,8 +178,7 @@ function WatchPartyContent({
                     updatedBy: remotePlaybackData.updatedBy,
                     updatedAt: remotePlaybackData.updatedAt.toMillis(),
                 };
-                 // Only update if playback state has meaningfully changed, ignoring minor time updates from self
-                if (newPlaybackState.updatedBy !== user?.id && JSON.stringify(newPlaybackState) !== JSON.stringify(playbackState)) {
+                 if (JSON.stringify(newPlaybackState) !== JSON.stringify(playbackState)) {
                      setPlaybackState(newPlaybackState);
                 }
             } else if (remotePlaybackData !== playbackState) {
@@ -514,12 +519,16 @@ function WatchPartyContent({
                 {renderMobileControls()}
             </header>
             <main className={cn(
-                "flex-1 flex flex-col md:grid md:grid-rows-[minmax(0,1fr)] gap-4 p-2 md:p-4 overflow-hidden",
+                "flex-1 flex flex-col md:grid md:grid-rows-[minmax(0,1fr)] gap-4 overflow-hidden",
+                isFullscreen && isMobile ? "p-0" : "p-2 md:p-4",
                 isSidebarOpen
                     ? "md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px]"
                     : "md:grid-cols-1"
             )}>
-                <div className="relative md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink aspect-video md:aspect-auto md:h-full min-h-0">
+                <div className={cn(
+                    "relative md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink md:h-full min-h-0 md:aspect-auto",
+                    isMobile && isFullscreen ? "aspect-auto" : "aspect-video"
+                )}>
                    {activeSharer ? (
                         <LiveKitStage sharerId={activeSharer}/>
                    ) : (
