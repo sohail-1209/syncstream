@@ -14,7 +14,8 @@ import {
   Crown,
   PanelRightOpen,
   Mic,
-  RefreshCw
+  RefreshCw,
+  RectangleHorizontal
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import {
@@ -239,6 +240,15 @@ export default function Home() {
                               <div>
                                   <p className="font-semibold">Sync to Host</p>
                                   <p className="text-muted-foreground">If your video falls out of sync, click this to jump to the host's current playback time.</p>
+                              </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                              <div className="p-2 bg-muted rounded-md shrink-0">
+                                  <RectangleHorizontal className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                  <p className="font-semibold">Rotate Screen</p>
+                                  <p className="text-muted-foreground">On mobile, this button rotates your screen to landscape for a better viewing experience.</p>
                               </div>
                           </div>
                       </div>

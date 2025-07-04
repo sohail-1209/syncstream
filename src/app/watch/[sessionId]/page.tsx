@@ -10,7 +10,7 @@ import { Logo } from "@/components/icons";
 import VideoPlayer, { type VideoPlayerRef, type VideoPlayerStatus } from "@/components/watch-party/video-player";
 import Sidebar from "@/components/watch-party/sidebar";
 import RecommendationsModal from "@/components/watch-party/recommendations-modal";
-import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare, MoreVertical, RotateCw } from "lucide-react";
+import { Copy, Users, Wand2, Link as LinkIcon, Loader2, ScreenShare, LogOut, ArrowRight, Eye, VideoOff, Maximize, Minimize, PanelRightClose, PanelRightOpen, Mic, MicOff, Crown, RefreshCw, MessageSquare, MoreVertical, RectangleHorizontal } from "lucide-react";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import type { ProcessVideoUrlOutput } from "@/ai/flows/process-video-url";
@@ -455,7 +455,7 @@ function WatchPartyContent({
                 </Button>
             )}
              <Button variant="ghost" size="icon" onClick={handleRotate} title="Rotate Screen">
-                <RotateCw className="h-5 w-5" />
+                <RectangleHorizontal className="h-5 w-5" />
             </Button>
             <Sheet>
                 <SheetTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></SheetTrigger>
