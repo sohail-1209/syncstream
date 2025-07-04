@@ -267,17 +267,15 @@ export default function Home() {
             </PopoverContent>
         </Popover>
         <Tooltip>
-            <TooltipTrigger asChild>
-                <Button variant="outline" onClick={handleInstall}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Install App
-                </Button>
-            </TooltipTrigger>
-            {!installPrompt && (
-                <TooltipContent>
-                    <p>App is not installable yet or is already installed.</p>
-                </TooltipContent>
-            )}
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon" onClick={handleInstall}>
+              <Download className="h-4 w-4" />
+              <span className="sr-only">Install App</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Install App</p>
+          </TooltipContent>
         </Tooltip>
         <ExistingRoomsList />
       </div>
