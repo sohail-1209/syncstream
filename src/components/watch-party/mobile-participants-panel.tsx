@@ -1,40 +1,13 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Crown, Loader2 } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
-import { useEffect, useState } from "react";
 import type { LocalUser } from "@/hooks/use-local-user";
-import { cn } from "@/lib/utils";
 
 interface Participant extends LocalUser {}
 
-export default function MobileParticipantsPanel({ sessionId, hostId }: { sessionId: string; hostId: string | null }) {
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    if (!sessionId) return;
-    setLoading(true);
-    const q = query(collection(db, "sessions", sessionId, "participants"), orderBy("name"));
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const fetchedParticipants: Participant[] = [];
-      querySnapshot.forEach((doc) => {
-        fetchedParticipants.push(doc.data() as Participant);
-      });
-      setParticipants(fetchedParticipants);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching participants:", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [sessionId]);
+export default function MobileParticipantsPanel({ hostId, participants, loading }: { hostId: string | null; participants: Participant[], loading: boolean }) {
   
   if (loading) {
     return (

@@ -1,11 +1,40 @@
+'use client';
 
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ChatPanel from "./chat-panel";
 import ParticipantsPanel from "./participants-panel";
 import { type LocalUser } from "@/hooks/use-local-user";
+import { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+
+interface Participant extends LocalUser {}
 
 export default function Sidebar({ sessionId, user, hostId }: { sessionId: string; user: LocalUser | null, hostId: string | null }) {
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    setLoading(true);
+    const q = query(collection(db, "sessions", sessionId, "participants"), orderBy("name"));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const fetchedParticipants: Participant[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedParticipants.push(doc.data() as Participant);
+      });
+      setParticipants(fetchedParticipants);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching participants:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [sessionId]);
+
   return (
     <Card className="w-full flex-1 flex flex-col min-h-0">
       <Tabs defaultValue="chat" className="w-full flex-1 flex flex-col min-h-0">
@@ -16,10 +45,10 @@ export default function Sidebar({ sessionId, user, hostId }: { sessionId: string
           </TabsList>
         </div>
         <TabsContent value="chat" className="flex-1 mt-0 min-h-0">
-          <ChatPanel sessionId={sessionId} user={user} />
+          <ChatPanel sessionId={sessionId} user={user} participants={participants} participantsLoading={loading} />
         </TabsContent>
         <TabsContent value="participants" className="flex-1 mt-0 min-h-0">
-          <ParticipantsPanel sessionId={sessionId} hostId={hostId} />
+          <ParticipantsPanel hostId={hostId} participants={participants} loading={loading} />
         </TabsContent>
       </Tabs>
     </Card>

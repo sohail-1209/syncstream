@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,12 +19,17 @@ interface Message {
     timestamp?: Timestamp;
 }
 
+interface Participant extends LocalUser {}
 
-export default function ChatPanel({ sessionId, user }: { sessionId: string; user: LocalUser | null }) {
+export default function ChatPanel({ sessionId, user, participants, participantsLoading }: { sessionId: string; user: LocalUser | null, participants: Participant[], participantsLoading: boolean }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const participantsMap = useMemo(() => {
+    return new Map(participants.map(p => [p.id, p]));
+  }, [participants]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -37,27 +41,36 @@ export default function ChatPanel({ sessionId, user }: { sessionId: string; user
   }, [messages]);
   
   useEffect(() => {
-      if (!sessionId) return;
-      setLoading(true);
+      if (!sessionId || participantsLoading) return;
+      
+      setMessagesLoading(true);
       const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy('timestamp', 'asc'));
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
           const fetchedMessages: Message[] = [];
           querySnapshot.forEach((doc) => {
               const data = doc.data();
+              const messageUserId = data.userId || data.user?.id;
+              const participant = participantsMap.get(messageUserId);
+
+              // Use participant data if available, otherwise fallback to old message format
+              const messageUser = participant ? 
+                { id: participant.id, name: participant.name, avatar: participant.avatar } :
+                (data.user || { id: 'unknown', name: 'Unknown', avatar: '' });
+
               fetchedMessages.push({
                   id: doc.id,
-                  user: data.user,
+                  user: messageUser,
                   text: data.text,
                   timestamp: data.timestamp,
-                  isMe: user?.id === data.user.id
+                  isMe: user?.id === messageUser.id
               });
           });
           setMessages(fetchedMessages);
-          setLoading(false);
+          setMessagesLoading(false);
       });
 
       return () => unsubscribe();
-  }, [sessionId, user]);
+  }, [sessionId, user, participantsMap, participantsLoading]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,17 +79,13 @@ export default function ChatPanel({ sessionId, user }: { sessionId: string; user
       setNewMessage('');
       await addDoc(collection(db, "sessions", sessionId, "messages"), {
         text: text,
-        user: {
-            id: user.id,
-            name: user.name,
-            avatar: user.avatar
-        },
+        userId: user.id, // Store userId instead of the whole user object
         timestamp: serverTimestamp()
       });
     }
   };
 
-  if (loading) {
+  if (messagesLoading || participantsLoading) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
