@@ -50,10 +50,23 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const [isPlaceholderFullscreen, setIsPlaceholderFullscreen] = useState(false);
   const placeholderRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<VideoPlayerStatus>('idle');
+  const [playerConfig, setPlayerConfig] = useState({});
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+        setPlayerConfig({
+            youtube: {
+                playerVars: {
+                    origin: window.location.origin
+                }
+            }
+        });
+    }
+  }, [isMounted]);
 
   useEffect(() => {
     if (videoSource) {
@@ -300,6 +313,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
               onSeek={handleSeek}
               onProgress={handleProgress}
               onError={handleUrlError}
+              config={playerConfig}
             />
           )}
         </div>
