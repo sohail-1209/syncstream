@@ -5,18 +5,6 @@ import { useState, useEffect } from 'react';
 
 const ADJECTIVES = ['Swift', 'Silent', 'Clever', 'Brave', 'Wise', 'Lucky', 'Happy', 'Gentle', 'Proud', 'Funny'];
 const ANIMALS = ['Fox', 'Wolf', 'Bear', 'Lion', 'Tiger', 'Eagle', 'Shark', 'Panther', 'Falcon', 'Hawk'];
-const ANIMAL_EMOJIS: { [key: string]: string } = {
-    'Fox': '🦊',
-    'Wolf': '🐺',
-    'Bear': '🐻',
-    'Lion': '🦁',
-    'Tiger': '🐯',
-    'Eagle': '🦅',
-    'Shark': '🦈',
-    'Panther': '🐆',
-    'Falcon': '🦅',
-    'Hawk': '🦅',
-};
 
 
 function getRandomItem<T>(arr: T[]): T {
@@ -48,11 +36,8 @@ export function useLocalUser(): LocalUser | null {
     }
 
     // If user exists, check if we need to update their avatar to the new style.
-    if (localUser && localUser.avatar && !localUser.avatar.includes('/initials/')) {
-        const nameParts = localUser.name.split(' ');
-        const animal = nameParts.length > 1 ? nameParts[nameParts.length - 1] : getRandomItem(ANIMALS);
-        const emoji = ANIMAL_EMOJIS[animal] || '🐾';
-        localUser.avatar = `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(emoji)}`;
+    if (localUser && (!localUser.avatar || !localUser.avatar.includes('/adventurer/'))) {
+        localUser.avatar = `https://api.dicebear.com/8.x/adventurer/svg?seed=${encodeURIComponent(localUser.name)}`;
         userWasModified = true;
     }
 
@@ -68,11 +53,11 @@ export function useLocalUser(): LocalUser | null {
       const adjective = getRandomItem(ADJECTIVES);
       const animal = getRandomItem(ANIMALS);
       const newId = crypto.randomUUID();
-      const emoji = ANIMAL_EMOJIS[animal] || '🐾';
+      const name = `${adjective} ${animal}`;
 
       const newUser: LocalUser = {
-        name: `${adjective} ${animal}`,
-        avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(emoji)}`,
+        name: name,
+        avatar: `https://api.dicebear.com/8.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
         id: newId,
       };
       localStorage.setItem('syncstream_user', JSON.stringify(newUser));
