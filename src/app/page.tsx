@@ -1,8 +1,7 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Clapperboard, Users, ArrowRight, Loader2, Download } from 'lucide-react';
+import { Clapperboard, Users, ArrowRight, Loader2, Download, HelpCircle } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import {
   Dialog,
@@ -14,6 +13,7 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useTransition, useEffect } from 'react';
@@ -103,6 +103,55 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 text-center md:p-8 bg-background">
       <div className="absolute top-4 right-4 flex items-center gap-2">
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="icon">
+                    <HelpCircle className="h-4 w-4" />
+                    <span className="sr-only">Help</span>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-4">
+                <h4 className="font-medium leading-none mb-4">App Guide</h4>
+                <div className="space-y-4 text-sm">
+                    <div className="flex items-start gap-4">
+                        <div className="p-2 bg-muted rounded-md shrink-0">
+                            <Download className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-semibold">Install App</p>
+                            <p className="text-muted-foreground">Installs SyncStream on your device for offline use and easy access from your home screen.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        <div className="p-2 bg-muted rounded-md shrink-0">
+                            <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-semibold">View Rooms</p>
+                            <p className="text-muted-foreground">See a list of all active watch parties. You can join a public room or delete one you created.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        <div className="p-2 bg-muted rounded-md shrink-0">
+                            <Clapperboard className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-semibold">Create Watch Party</p>
+                            <p className="text-muted-foreground">Start a new watch party session. You can set an optional password to make it private.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        <div className="p-2 bg-muted rounded-md shrink-0">
+                            <ArrowRight className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-semibold">Join by Code</p>
+                            <p className="text-muted-foreground">Enter a unique code from a friend to join their watch party session directly.</p>
+                        </div>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
         <Tooltip>
             <TooltipTrigger asChild>
                 <Button variant="outline" onClick={handleInstall}>
