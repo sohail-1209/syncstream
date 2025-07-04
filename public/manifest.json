@@ -1,32 +1,17 @@
 {
+  "theme_color": "#141218",
+  "background_color": "#141218",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
   "name": "SyncStream",
   "short_name": "SyncStream",
-  "description": "Your shared screen, perfectly in sync. Create private watch parties, chat in real-time, and get AI-powered recommendations for what to watch next.",
-  "start_url": "/",
-  "id": "/",
-  "display": "standalone",
-  "background_color": "#141218",
-  "theme_color": "#141218",
+  "description": "Your shared screen, perfectly in sync.",
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "https://placehold.co/1280x720.png",
-      "type": "image/png",
-      "sizes": "1280x720",
-      "form_factor": "wide",
-      "label": "SyncStream Desktop View"
-    },
-    {
-      "src": "https://placehold.co/720x1280.png",
-      "type": "image/png",
-      "sizes": "720x1280",
-      "label": "SyncStream Mobile View"
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
     }
   ]
 }
