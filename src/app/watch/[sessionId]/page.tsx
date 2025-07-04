@@ -157,22 +157,31 @@ function WatchPartyContent({
             const data = doc.data();
             setHostId(data?.hostId ?? null);
             setActiveSharer(data?.activeSharer ?? null);
-            setVideoSource(data?.videoSource ?? null);
+            const newVideoSource = data?.videoSource ?? null;
+
+            // Only update video source if it has actually changed
+            if (JSON.stringify(newVideoSource) !== JSON.stringify(videoSource)) {
+                setVideoSource(newVideoSource);
+            }
             
             const remotePlaybackData = data?.playbackState;
             if (remotePlaybackData && remotePlaybackData.updatedAt && typeof remotePlaybackData.updatedAt.toMillis === 'function') {
-                setPlaybackState({
+                const newPlaybackState = {
                     isPlaying: remotePlaybackData.isPlaying,
                     seekTime: remotePlaybackData.seekTime,
                     updatedBy: remotePlaybackData.updatedBy,
                     updatedAt: remotePlaybackData.updatedAt.toMillis(),
-                });
-            } else {
+                };
+                 // Only update if playback state has meaningfully changed, ignoring minor time updates from self
+                if (newPlaybackState.updatedBy !== user?.id && JSON.stringify(newPlaybackState) !== JSON.stringify(playbackState)) {
+                     setPlaybackState(newPlaybackState);
+                }
+            } else if (remotePlaybackData !== playbackState) {
                 setPlaybackState(remotePlaybackData || null);
             }
         });
         return () => unsub();
-    }, [sessionId]);
+    }, [sessionId, user?.id, videoSource, playbackState]);
     
     // Sync local participant's screen share state with the activeSharer from DB
     useEffect(() => {
@@ -492,7 +501,10 @@ function WatchPartyContent({
 
     return (
         <div ref={pageRef} className="flex flex-col h-screen bg-background text-foreground">
-            <header className="relative flex items-center justify-between px-2 sm:px-4 py-2 border-b z-50">
+            <header className={cn(
+                "relative flex items-center justify-between px-2 sm:px-4 py-2 border-b z-50",
+                isFullscreen && isMobile && "hidden"
+            )}>
                 <Link href="/" className="flex items-center gap-2">
                     <Logo className="h-8 w-8 text-primary" />
                     <span className="font-bold text-xl font-headline hidden sm:inline">SyncStream</span>
