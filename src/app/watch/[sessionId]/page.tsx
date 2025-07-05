@@ -31,13 +31,15 @@ import FloatingEmojis from "@/components/watch-party/floating-emojis";
 import { Sheet, SheetContent, SheetHeader as SheetHeaderComponent, SheetTitle as SheetTitleComponent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileSidebar from "@/components/watch-party/mobile-sidebar";
+import { ScreenShare as ScreenSharePlugin } from "@/plugins/screenShare";
+
 
 type AuthStatus = 'checking' | 'prompt_password' | 'authenticated' | 'error';
 type PlaybackState = {
-  isPlaying: boolean;
-  seekTime: number;
-  updatedBy: string;
-  updatedAt: number;
+    isPlaying: boolean;
+    seekTime: number;
+    updatedBy: string;
+    updatedAt: number;
 } | null;
 
 function WatchPartyContent({
@@ -74,7 +76,7 @@ function WatchPartyContent({
 
     const [activeSharer, setActiveSharer] = useState<string | null>(initialActiveSharer);
     const [isTogglingShare, startShareToggleTransition] = useTransition();
-    
+
     const [hostId, setHostId] = useState<string | null>(initialHostId);
 
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -83,7 +85,7 @@ function WatchPartyContent({
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const pageRef = useRef<HTMLDivElement>(null);
     const isMobile = useIsMobile();
-    
+
     // LiveKit state
     const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
     const isMicMuted = !isMicrophoneEnabled;
@@ -135,15 +137,15 @@ function WatchPartyContent({
             setInviteLink(`${window.location.origin}/watch/${sessionId}`);
         }
     }, [sessionId]);
-    
+
     useEffect(() => {
         const sessionRef = doc(db, "sessions", sessionId);
         const userRef = doc(collection(sessionRef, "participants"), user.id);
 
         const setPresence = async () => {
-             await setDoc(userRef, { ...user, lastSeen: serverTimestamp() }, { merge: true });
+            await setDoc(userRef, { ...user, lastSeen: serverTimestamp() }, { merge: true });
         }
-        
+
         setPresence();
 
         const interval = setInterval(() => {
@@ -167,7 +169,7 @@ function WatchPartyContent({
             if (JSON.stringify(newVideoSource) !== JSON.stringify(videoSource)) {
                 setVideoSource(newVideoSource);
             }
-            
+
             const remotePlaybackData = data?.playbackState;
             if (remotePlaybackData && remotePlaybackData.updatedAt && typeof remotePlaybackData.updatedAt.toMillis === 'function') {
                 const newPlaybackState = {
@@ -176,8 +178,8 @@ function WatchPartyContent({
                     updatedBy: remotePlaybackData.updatedBy,
                     updatedAt: remotePlaybackData.updatedAt.toMillis(),
                 };
-                 if (JSON.stringify(newPlaybackState) !== JSON.stringify(playbackState)) {
-                     setPlaybackState(newPlaybackState);
+                if (JSON.stringify(newPlaybackState) !== JSON.stringify(playbackState)) {
+                    setPlaybackState(newPlaybackState);
                 }
             } else if (remotePlaybackData !== playbackState) {
                 setPlaybackState(remotePlaybackData || null);
@@ -185,7 +187,7 @@ function WatchPartyContent({
         });
         return () => unsub();
     }, [sessionId, user?.id, videoSource, playbackState]);
-    
+
     // Sync local participant's screen share state with the activeSharer from DB
     useEffect(() => {
         if (localParticipant) {
@@ -233,7 +235,7 @@ function WatchPartyContent({
 
     const handleSetVideo = () => {
         if (!isHost) {
-             toast({
+            toast({
                 variant: 'destructive',
                 title: 'Only the host can change the video.',
             });
@@ -260,44 +262,65 @@ function WatchPartyContent({
     };
 
     const handleShareScreen = async () => {
-       if (isMobile && !activeSharer) {
+        if (isMobile && !activeSharer) {
             toast({
                 variant: 'destructive',
                 title: 'Unsupported Feature',
-                description: "Screen sharing is not supported on most mobile browsers. Please use a desktop browser.",
+                description: "Screen sharing is not supported on most mobile browsers. Please use the app.",
                 duration: 5000,
             });
             return;
-       }
+        }
 
-       startShareToggleTransition(async () => {
-           if (activeSharer) { // Someone is sharing
-               if (amSharing || isHost) {
-                   // If it's me sharing, OR if I'm the host, I can stop the share.
-                   await setScreenSharer(sessionId, null);
-               } else {
-                   // It's someone else sharing, and I'm not the host. I can't do anything.
-                   toast({ variant: 'destructive', title: 'Action not allowed', description: 'Another user is already sharing their screen.' });
-               }
-           } else { // No one is sharing
-               if (isHost) {
-                   // If I'm the host, I can start sharing.
-                   await setVideoSourceForSession(sessionId, null);
-                   await setScreenSharer(sessionId, user!.id);
-               } else {
-                   // I'm not the host, I can't start a share.
-                   toast({ variant: 'destructive', title: 'Action not allowed', description: 'Only the host can start a screen share.' });
-               }
-           }
-       });
+        startShareToggleTransition(async () => {
+            try {
+                if (activeSharer) {
+                    if (amSharing || isHost) {
+                        // ✅ Stop native screen share
+                        await (ScreenSharePlugin as any).stop();
+                        await setScreenSharer(sessionId, null);
+                    } else {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Action not allowed',
+                            description: 'Another user is already sharing their screen.',
+                        });
+                    }
+                } else {
+                    if (isHost) {
+                        // ✅ Start native screen share
+                        // ✅ Stop native screen share
+                        await (ScreenSharePlugin as any).stop();
+                        await setScreenSharer(sessionId, null);
+
+                        await setVideoSourceForSession(sessionId, null);
+                        await setScreenSharer(sessionId, user!.id);
+                    } else {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Action not allowed',
+                            description: 'Only the host can start a screen share.',
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Screen share error:", err);
+                toast({
+                    variant: 'destructive',
+                    title: 'Screen Share Error',
+                    description: 'Something went wrong. Please try again.',
+                });
+            }
+        });
     };
-    
+
+
     const handleToggleMic = () => {
         if (localParticipant) {
             localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled);
         }
     };
-    
+
     const handleCopyInvite = () => {
         if (!inviteLink) return;
         navigator.clipboard.writeText(inviteLink).then(() => {
@@ -314,7 +337,7 @@ function WatchPartyContent({
         }
         router.push('/');
     };
-    
+
     const handleFetchPassword = () => {
         if (!sessionId) return;
         startFetchPasswordTransition(async () => {
@@ -382,7 +405,7 @@ function WatchPartyContent({
                 if (result.error) {
                     toast({ variant: 'destructive', title: 'Failed to update host', description: result.error });
                 } else {
-                     toast({
+                    toast({
                         title: 'Host Updated',
                         description: result.newHostId === user.id ? 'You are now the host.' : 'You are no longer the host.',
                     });
@@ -394,7 +417,7 @@ function WatchPartyContent({
     const renderDesktopControls = () => (
         <div className="hidden md:flex items-center justify-between flex-1">
             <div className="flex-1" /> {/* Spacer */}
-            
+
             {/* Center Controls */}
             <div className="flex flex-col items-center">
                 <span className="text-xs text-muted-foreground">ROOM CODE</span>
@@ -406,7 +429,7 @@ function WatchPartyContent({
                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><Eye className="h-4 w-4" /></Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-4">
-                                {isFetchingPassword || sessionPassword === null ? <Loader2 className="h-5 w-5 animate-spin"/> : <p className="font-mono text-lg font-bold text-primary">{sessionPassword}</p>}
+                                {isFetchingPassword || sessionPassword === null ? <Loader2 className="h-5 w-5 animate-spin" /> : <p className="font-mono text-lg font-bold text-primary">{sessionPassword}</p>}
                             </PopoverContent>
                         </Popover>
                     )}
@@ -450,7 +473,7 @@ function WatchPartyContent({
                     <RefreshCw className="h-5 w-5" />
                 </Button>
             )}
-             <Button variant="ghost" size="icon" onClick={handleRotate} title="Rotate Screen">
+            <Button variant="ghost" size="icon" onClick={handleRotate} title="Rotate Screen">
                 <RectangleHorizontal className="h-5 w-5" />
             </Button>
             <Sheet>
@@ -460,16 +483,16 @@ function WatchPartyContent({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {/* Room Info */}
                         <div className="flex justify-between items-center p-2 rounded-lg bg-muted col-span-full">
-                           <div className="flex flex-col">
-                             <span className="text-xs text-muted-foreground">ROOM CODE</span>
-                             <span className="font-mono">{sessionId}</span>
-                           </div>
-                           {hasPassword && (
-                             <Popover onOpenChange={(open) => { if (open) handleFetchPassword(); else setTimeout(() => setSessionPassword(null), 150); }}>
-                                 <PopoverTrigger asChild><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></PopoverTrigger>
-                                 <PopoverContent className="w-auto p-4">{isFetchingPassword || sessionPassword === null ? <Loader2 className="h-5 w-5 animate-spin"/> : <p className="font-mono text-lg font-bold text-primary">{sessionPassword}</p>}</PopoverContent>
-                             </Popover>
-                           )}
+                            <div className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">ROOM CODE</span>
+                                <span className="font-mono">{sessionId}</span>
+                            </div>
+                            {hasPassword && (
+                                <Popover onOpenChange={(open) => { if (open) handleFetchPassword(); else setTimeout(() => setSessionPassword(null), 150); }}>
+                                    <PopoverTrigger asChild><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></PopoverTrigger>
+                                    <PopoverContent className="w-auto p-4">{isFetchingPassword || sessionPassword === null ? <Loader2 className="h-5 w-5 animate-spin" /> : <p className="font-mono text-lg font-bold text-primary">{sessionPassword}</p>}</PopoverContent>
+                                </Popover>
+                            )}
                         </div>
                         {/* Actions */}
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setIsMobileSidebarOpen(true)}>
@@ -488,28 +511,28 @@ function WatchPartyContent({
                                 <div className="flex items-center gap-2 mt-2"><Input value={inviteLink} readOnly /><Button variant="outline" size="icon" onClick={handleCopyInvite}><Copy className="h-4 w-4" /></Button></div>
                             </PopoverContent>
                         </Popover>
-                        
+
                         <RecommendationsModal><Button variant="outline" className="w-full justify-start gap-2"><Wand2 /> AI Recs</Button></RecommendationsModal>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={toggleFullscreen}>{isFullscreen ? <Minimize /> : <Maximize />} {isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</Button>
-                        
+
                         <div className="col-span-full pt-2">
-                           <Button variant="destructive" className="w-full justify-center gap-2" onClick={handleExitRoom}>
-                               <LogOut /> Exit Room
-                           </Button>
+                            <Button variant="destructive" className="w-full justify-center gap-2" onClick={handleExitRoom}>
+                                <LogOut /> Exit Room
+                            </Button>
                         </div>
                     </div>
                 </SheetContent>
             </Sheet>
         </div>
     );
-    
+
     if (isFullscreen && isMobile) {
         return (
-             <div ref={pageRef} className="relative h-svh w-svw bg-black">
-                 {activeSharer ? (
-                    <LiveKitStage sharerId={activeSharer}/>
-                 ) : (
-                    <VideoPlayer 
+            <div ref={pageRef} className="relative h-svh w-svw bg-black">
+                {activeSharer ? (
+                    <LiveKitStage sharerId={activeSharer} />
+                ) : (
+                    <VideoPlayer
                         ref={videoPlayerRef}
                         videoSource={videoSource}
                         playbackState={playbackState}
@@ -518,14 +541,14 @@ function WatchPartyContent({
                         isHost={isHost}
                         onStatusChange={setPlayerStatus}
                     />
-                 )}
-                 {(videoSource || activeSharer) && (
-                   <div className="absolute inset-0 pointer-events-none">
-                       <EmojiBar sessionId={sessionId} user={user} isHost={isHost} onSync={handleSyncToHostClick} />
-                       <FloatingMessages sessionId={sessionId} user={user} />
-                       <FloatingEmojis sessionId={sessionId} />
-                   </div>
-                 )}
+                )}
+                {(videoSource || activeSharer) && (
+                    <div className="absolute inset-0 pointer-events-none">
+                        <EmojiBar sessionId={sessionId} user={user} isHost={isHost} onSync={handleSyncToHostClick} />
+                        <FloatingMessages sessionId={sessionId} user={user} />
+                        <FloatingEmojis sessionId={sessionId} />
+                    </div>
+                )}
             </div>
         )
     }
@@ -551,10 +574,10 @@ function WatchPartyContent({
                     "relative md:col-start-1 md:row-start-1 w-full flex-shrink-0 md:flex-shrink md:h-full min-h-0",
                     !isMobile && "aspect-video md:aspect-auto"
                 )}>
-                   {activeSharer ? (
-                        <LiveKitStage sharerId={activeSharer}/>
-                   ) : (
-                        <VideoPlayer 
+                    {activeSharer ? (
+                        <LiveKitStage sharerId={activeSharer} />
+                    ) : (
+                        <VideoPlayer
                             ref={videoPlayerRef}
                             videoSource={videoSource}
                             playbackState={playbackState}
@@ -563,14 +586,14 @@ function WatchPartyContent({
                             isHost={isHost}
                             onStatusChange={setPlayerStatus}
                         />
-                   )}
-                   {(videoSource || activeSharer) && (
-                       <div className="absolute inset-0 pointer-events-none">
-                           <EmojiBar sessionId={sessionId} user={user} isHost={isHost} onSync={handleSyncToHostClick} />
-                           <FloatingMessages sessionId={sessionId} user={user} />
-                           <FloatingEmojis sessionId={sessionId} />
-                       </div>
-                   )}
+                    )}
+                    {(videoSource || activeSharer) && (
+                        <div className="absolute inset-0 pointer-events-none">
+                            <EmojiBar sessionId={sessionId} user={user} isHost={isHost} onSync={handleSyncToHostClick} />
+                            <FloatingMessages sessionId={sessionId} user={user} />
+                            <FloatingEmojis sessionId={sessionId} />
+                        </div>
+                    )}
                 </div>
                 <div className={cn(
                     "flex-col md:col-start-2 md:row-start-1 w-full flex-1 md:h-full min-h-0",
@@ -584,7 +607,7 @@ function WatchPartyContent({
             <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
                 <SheetContent side="right" className="p-0 w-full max-w-xs flex flex-col" container={pageRef.current}>
                     <SheetHeaderComponent className="p-4 border-b flex-shrink-0">
-                      <SheetTitleComponent>Chat and Participants</SheetTitleComponent>
+                        <SheetTitleComponent>Chat and Participants</SheetTitleComponent>
                     </SheetHeaderComponent>
                     <MobileSidebar sessionId={sessionId} user={user} hostId={hostId} />
                 </SheetContent>
@@ -595,7 +618,7 @@ function WatchPartyContent({
                     <DialogHeader>
                         <DialogTitle>Host Control</DialogTitle>
                         <DialogDescription>
-                           Enter the room password to claim or abdicate the host role.
+                            Enter the room password to claim or abdicate the host role.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 py-4">
@@ -623,7 +646,7 @@ function WatchPartyContent({
                     <DialogHeader>
                         <DialogTitle>Set Video</DialogTitle>
                         <DialogDescription>
-                           Paste a video link. Direct links and URLs from services like YouTube or Vimeo work best.
+                            Paste a video link. Direct links and URLs from services like YouTube or Vimeo work best.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 py-4">
@@ -683,8 +706,8 @@ export default function WatchPartyPage() {
         };
         checkSession();
     }, [params.sessionId]);
-    
-     useEffect(() => {
+
+    useEffect(() => {
         if (authStatus !== 'authenticated' || !localUser) return;
 
         getLiveKitToken(params.sessionId, localUser.id)
@@ -724,9 +747,9 @@ export default function WatchPartyPage() {
             </div>
         );
     }
-    
+
     if (authStatus === 'error') {
-         return (
+        return (
             <div className="flex h-screen w-full items-center justify-center bg-background text-center p-4">
                 <div>
                     <h1 className="text-2xl font-bold text-destructive">Error</h1>
@@ -736,10 +759,10 @@ export default function WatchPartyPage() {
             </div>
         );
     }
-    
+
     if (authStatus === 'prompt_password') {
         return (
-             <Dialog open={true} onOpenChange={(isOpen) => !isOpen && router.push('/')}>
+            <Dialog open={true} onOpenChange={(isOpen) => !isOpen && router.push('/')}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Password Required</DialogTitle>
@@ -758,11 +781,11 @@ export default function WatchPartyPage() {
                             onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
                             disabled={isVerifying}
                         />
-                         {authError && <p className="text-xs text-destructive pt-2">{authError}</p>}
+                        {authError && <p className="text-xs text-destructive pt-2">{authError}</p>}
                     </div>
                     <DialogFooter className="sm:justify-between">
-                         <Button variant="outline" onClick={() => router.push('/')}>
-                            <LogOut className="mr-2 h-4 w-4"/> Leave
+                        <Button variant="outline" onClick={() => router.push('/')}>
+                            <LogOut className="mr-2 h-4 w-4" /> Leave
                         </Button>
                         <Button onClick={handleVerifyPassword} disabled={isVerifying}>
                             {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} Join Session
@@ -772,7 +795,7 @@ export default function WatchPartyPage() {
             </Dialog>
         );
     }
-    
+
     if (authStatus === 'authenticated' && livekitToken && sessionDetails && localUser) {
         return (
             <LiveKitRoom
@@ -787,7 +810,7 @@ export default function WatchPartyPage() {
                         reason === DisconnectReason.SIGNAL_CLOSE ||
                         reason === DisconnectReason.DUPLICATE_IDENTITY
                     ) {
-                       return;
+                        return;
                     }
 
                     toast({
@@ -797,7 +820,7 @@ export default function WatchPartyPage() {
                     });
                 }}
             >
-                <WatchPartyContent 
+                <WatchPartyContent
                     sessionId={params.sessionId}
                     initialHasPassword={sessionDetails.hasPassword}
                     initialHostId={sessionDetails.hostId}
